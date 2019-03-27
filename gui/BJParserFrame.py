@@ -121,10 +121,9 @@ class BJParserFrame(tk.Frame):
         self.FileListBox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.UpdateFileListBoxFrameLabel()
       
-        self.GraphFrame = ttk.Frame(self.FileListBoxFrame)
-        self.PlotCanvas = tk.Canvas(self.GraphFrame, height = 20, width=80)
-        self.PlotCanvas.pack(fill=tk.BOTH)
-        self.GraphFrame.pack(side=tk.RIGHT, fill=tk.BOTH)
+        self.PlotCanvas = tk.Canvas(self.FileListBoxFrame, height = 20, width=550)
+        self.PlotCanvas.pack(side=tk.LEFT, fill=tk.BOTH)
+        
 
 
         
@@ -155,7 +154,10 @@ class BJParserFrame(tk.Frame):
         self.handler.flush()
         if os.path.exists(_f):
             self.DisplayDataFigure(_f)
-        
+        #filename = tk.PhotoImage(file = os.path.join(os.environ['HOME'],"Downloads","Dark Helmet.png"))
+        #image = self.PlotCanvas.create_image(50, 50, anchor=tk.NE, image=filename)
+#        coord = 10, 50, 240, 210
+#        oval = self.PlotCanvas.create_arc(coord, start=0, extent=150, fill="red")
 
     def ParseClick(self):
         self.checkOptions()
@@ -209,29 +211,15 @@ class BJParserFrame(tk.Frame):
         self.master.destroy()
 
     def checkOptions(self):
+        if self.cache['last_input_path'] == None:
+            self.cache['last_input_path'] = os.environ['HOME']
         if not os.path.exists(self.cache['last_input_path']):
             self.cache['last_input_path'] = os.environ['HOME']
         print("Nothing Yet.")
 
     def Parse(self):
         print("Nothing here yet")
-        
-    def draw_figure(self, figure, loc=(0, 0)):
-        figure_canvas_agg = FigureCanvasAgg(figure)
-        figure_canvas_agg.draw()
-        figure_x, figure_y, figure_w, figure_h = figure.bbox.bounds
-        figure_w, figure_h = int(figure_w), int(figure_h)
-        photo = tk.PhotoImage(master=self.PlotCanvas, width=figure_w, height=figure_h)
     
-        # Position: convert from top-left anchor to center anchor
-        self.PlotCanvas.create_image(loc[0] + figure_w/2, loc[1] + figure_h/2, image=photo)
-    
-        # Unfortunately, there's no accessor for the pointer to the native renderer
-        tkagg.blit(photo, figure_canvas_agg.get_renderer()._renderer, colormode=2)
-    
-        # Return a handle which contains a reference to the photo object
-        # which must be kept live or else the picture disappears
-        return photo
     
     def DisplayDataFigure(self, fileName):
 #        sindex = float(tk.SourceText.index(tk.INSERT))
@@ -265,13 +253,30 @@ class BJParserFrame(tk.Frame):
             #     print(currentData)
         #fileData.close()
         #https://matplotlib.org/gallery/user_interfaces/embedding_in_tk_canvas_sgskip.html
-        fig = mpl.figure.Figure(figsize=(3, 3), dpi=80)
+        fig = mpl.figure.Figure(figsize=(5, 4), dpi=80)
         ax = fig.add_subplot(111)
         ax.plot(distanceData, currentData)
         #plot window
-        fig_x, fig_y = 30, 10
-        fig_photo = self.draw_figure(fig, loc=(fig_x, fig_y))
-        try:
-            fig_photo.show()
-        except AttributeError:
-            pass
+        #coord = 10, 50, 240, 210
+      
+           
+        figure_canvas_agg = FigureCanvasAgg(fig)
+        figure_canvas_agg.draw()
+        figure_x, figure_y, figure_w, figure_h = fig.bbox.bounds
+        figure_w, figure_h = int(figure_w), int(figure_h)
+        fig_photo = tk.PhotoImage(master=self.PlotCanvas, width=figure_w, height=figure_h)
+    
+        # Position: convert from top-left anchor to center anchor
+        self.PlotCanvas.create_image(figure_w/2, figure_h/2, image=fig_photo)
+    
+        # Unfortunately, there's no accessor for the pointer to the native renderer
+        tkagg.blit(fig_photo, figure_canvas_agg.get_renderer()._renderer, colormode=2)
+    
+        # Return a handle which contains a reference to the photo object
+        # which must be kept live or else the picture disappears
+
+        
+        #try:
+        fig_photo.show()
+        #except AttributeError:
+        #    pass
