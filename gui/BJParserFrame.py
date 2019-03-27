@@ -138,9 +138,7 @@ class BJParserFrame(tk.Frame):
         self.Quit()
 
     def ListBoxClick(self, event):
-#        self.logger.info("Click click click")
-#        self.handler.flush()
-        print(event)
+
         selected = [self.FileListBox.get(x) for x in self.FileListBox.curselection()]
         if selected == self.selected_files:
             self.logger.debug("File selection unchanged.")
@@ -154,10 +152,6 @@ class BJParserFrame(tk.Frame):
         self.handler.flush()
         if os.path.exists(_f):
             self.DisplayDataFigure(_f)
-        #filename = tk.PhotoImage(file = os.path.join(os.environ['HOME'],"Downloads","Dark Helmet.png"))
-        #image = self.PlotCanvas.create_image(50, 50, anchor=tk.NE, image=filename)
-#        coord = 10, 50, 240, 210
-#        oval = self.PlotCanvas.create_arc(coord, start=0, extent=150, fill="red")
 
     def ParseClick(self):
         self.checkOptions()
@@ -239,24 +233,15 @@ class BJParserFrame(tk.Frame):
         fig = mpl.figure.Figure(figsize=(5, 4), dpi=80)
         ax = fig.add_subplot(111)
         ax.plot(distanceData, currentData)
-           
+        fig.suptitle(os.path.basename(fileName))
         figure_canvas_agg = FigureCanvasAgg(fig)
         figure_canvas_agg.draw()
         figure_x, figure_y, figure_w, figure_h = fig.bbox.bounds
         figure_w, figure_h = int(figure_w), int(figure_h)
-        fig_photo = tk.PhotoImage(master=self.PlotCanvas, width=figure_w, height=figure_h)
+        self.fig_photo = tk.PhotoImage(master=self.PlotCanvas, width=figure_w, height=figure_h)
     
         # Position: convert from top-left anchor to center anchor
-        self.PlotCanvas.create_image(figure_w/2, figure_h/2, image=fig_photo)
+        self.PlotCanvas.create_image(figure_w/2, figure_h/2, image=self.fig_photo)
     
         # Unfortunately, there's no accessor for the pointer to the native renderer
-        tkagg.blit(fig_photo, figure_canvas_agg.get_renderer()._renderer, colormode=2)
-    
-        # Return a handle which contains a reference to the photo object
-        # which must be kept live or else the picture disappears
-
-        
-        #try:
-        #fig_photo.show()
-        #except AttributeError:
-        #    pass
+        tkagg.blit(self.fig_photo, figure_canvas_agg.get_renderer()._renderer, colormode=2)
