@@ -222,43 +222,23 @@ class BJParserFrame(tk.Frame):
     
     
     def DisplayDataFigure(self, fileName):
-#        sindex = float(tk.SourceText.index(tk.INSERT))
-#        sindex = int(math.floor(sindex)) - 1
+
         distanceData = []
         currentData = []
         with open(fileName, 'rb') as fileData:
             self.logger.debug("Plotting %s", fileName)
             self.handler.flush()
-            # filePlot = fileData.read()
-            # print(filePlot.__len__())
             for liness in fileData.readlines()[105:-1]:
                 liness = liness.__str__()
                 liness = liness[2:-9]
                 liness = liness.split('\\t')
                 distanceData.append(float(liness[0]))
                 currentData.append(float(liness[1]))
-            # fileLine = fileData.readlines()
-            # liness = fileLine[106]
-            # liness = liness.__str__()
-            # liness = liness[2:-9]
-            # print(liness)
-            # liness = liness.split('\\t')
-            # print(liness)
-            # print(float(liness[0]))
-            # print(float('2e-1'))
-            # for liness in fileLine[106:]:
-            #     liness = liness.__str__()
-            #     distanceData.append(float(liness[2:11]))
-            #     currentData.append(float(liness[19:27]))
-            #     print(currentData)
-        #fileData.close()
+
         #https://matplotlib.org/gallery/user_interfaces/embedding_in_tk_canvas_sgskip.html
         fig = mpl.figure.Figure(figsize=(5, 4), dpi=80)
         ax = fig.add_subplot(111)
         ax.plot(distanceData, currentData)
-        #plot window
-        #coord = 10, 50, 240, 210
-      
            
         figure_canvas_agg = FigureCanvasAgg(fig)
         figure_canvas_agg.draw()
@@ -277,6 +257,6 @@ class BJParserFrame(tk.Frame):
 
         
         #try:
-        fig_photo.show()
+        #fig_photo.show()
         #except AttributeError:
         #    pass
