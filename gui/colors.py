@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-__all__ = ["BLACK","YELLOW", "WHITE", "RED", "TEAL", "GREEN", "BLUE", "GREY"]
+__all__ = ["BLACK","YELLOW", "WHITE", "RED", "TEAL", "GREEN", "BLUE", "GREY", "LIGHTRED", "LIGHTBLUE", "LIGHTGREEN"]
 
 BLACK="#000000"
 YELLOW="#f4e012"
@@ -10,3 +10,6 @@ TEAL="#78CBFD"
 GREEN="#09f218"
 BLUE="#090df2"
 GREY='#e8e8e8'
+LIGHTRED="#ff9999"
+LIGHTBLUE="#ccffff"
+LIGHTGREEN="#ccfccc"
