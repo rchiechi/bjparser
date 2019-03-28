@@ -18,6 +18,7 @@ parser.add_argument('-L','--loglevel', default='info', choices=('info','warn','e
                     help="Set the logging level.")
 parser.add_argument('-e', '--extension', default='ivs',
                     help="Extension of input files to parse.")
+
 opts=parser.parse_args()
 
 BJParserFrame(opts)

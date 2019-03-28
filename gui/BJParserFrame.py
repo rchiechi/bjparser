@@ -8,7 +8,7 @@ Created on Wed Mar 27 13:18:21 2019
 import os
 import logging
 import platform
-import math
+import threading
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font
@@ -22,6 +22,10 @@ import gui.colors as cl
 import gui.tooltip as tip
 from util.Cache import Cache
 from util.logger import GUIHandler
+from parse.read import ReadIVS
+
+
+MASTER_LOCK = threading.RLock()
 
 
 class BJParserFrame(tk.Frame):
@@ -33,6 +37,7 @@ class BJParserFrame(tk.Frame):
     Keep_files = []
     Toss_files = []
     style = ttk.Style()
+
     boolmap = {1:True, 0:False}
     
     def __init__(self, opts, master=None):
@@ -44,7 +49,10 @@ class BJParserFrame(tk.Frame):
         self.master.geometry('900x850+250-250')
         self.pack(fill=tk.BOTH, expand=True)
         self.update_idletasks()
-        self.__createWidgets()      
+        self.__createWidgets()
+        self.cache = Cache(self.logger)
+        self.ivs_files = ReadIVS(self.logger, self.opts)
+        self.checkOptions()
         self.ToFront()
         self.mainloop()
 
@@ -77,8 +85,7 @@ class BJParserFrame(tk.Frame):
         self.logger.setLevel(getattr(logging,self.opts.loglevel.upper()))
         self.logger.info("Logging...")
         self.handler.flush()
-        self.cache = Cache(self.logger)
-        self.checkOptions()
+
         
 
     def __createButtons(self):
@@ -141,10 +148,10 @@ class BJParserFrame(tk.Frame):
     def __createCanvas(self):
         _h = int(self.winfo_height())
         _w = int(self.winfo_width())
-        self.KeepPlotCanvas = tk.Canvas(self.CanvasFrame, bg='green',
+        self.KeepPlotCanvas = tk.Canvas(self.CanvasFrame, bg='white',
                                         height = _h/3, width = _w/2)
         self.KeepPlotCanvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.TossPlotCanvas = tk.Canvas(self.CanvasFrame, bg='red',
+        self.TossPlotCanvas = tk.Canvas(self.CanvasFrame, bg='white',
                                         height = _h/3, width = _w/2)
         self.TossPlotCanvas.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
@@ -183,6 +190,7 @@ class BJParserFrame(tk.Frame):
         if os.path.exists(_f):
             self.DisplayDataFigure(_prefix, 
                                    getattr(self, _prefix+'PlotCanvas'), _f)
+        
             
 
     def ParseClick(self):
@@ -212,7 +220,10 @@ class BJParserFrame(tk.Frame):
 
     def __updateFileListBox(self, _prefix):
             getattr(self, _prefix+'filelist').set(" ".join([x.replace(" ","_") 
-                for x in getattr(self, _prefix+'_files')]))    
+                for x in getattr(self, _prefix+'_files')]))
+#            for _f in getattr(self, _prefix+'_files'):
+#                getattr(self.ivs_files, _prefix+'File')(os.path.join(self.indir,_f))
+
 
     def KeepFileClick(self, event=None):
         self.__FileClick('Toss', 'Keep')
@@ -237,7 +248,8 @@ class BJParserFrame(tk.Frame):
             else:
                 getattr(self, _to+'_files').append(getattr(self, _from+'_files')[i])
         setattr(self, _from+'_files', filelist)
-        getattr(self, _from+'FileListBox').selection_clear(0,tk.END)       
+        getattr(self, _from+'FileListBox').selection_clear(0,tk.END)
+        #getattr(self, _from+'FileListBox').selection_set(selected[-1])
         self.__updateFileListBox(_to)
         self.__updateFileListBox(_from)
         
@@ -264,24 +276,12 @@ class BJParserFrame(tk.Frame):
     def Parse(self):
         print("Nothing here yet")
     
-    
     def DisplayDataFigure(self, label, master, fileName):
-
-        distanceData = []
-        currentData = []
-        with open(fileName, 'rb') as fileData:
-            self.logger.debug("Plotting %s", fileName)
-            self.handler.flush()
-            for liness in fileData.readlines()[105:-1]:
-                liness = liness.__str__()
-                liness = liness[2:-9]
-                liness = liness.split('\\t')
-                distanceData.append(float(liness[0]))
-                currentData.append(float(liness[1]))
-
+        self.ivs_files.AddFile(fileName)
+        self.handler.flush()
         fig = mpl.figure.Figure(figsize=(5, 4), dpi=80)
         ax = fig.add_subplot(111)
-        ax.plot(distanceData, currentData)
+        ax.plot(self.ivs_files[fileName]['d'], self.ivs_files[fileName]['I'])
         fig.suptitle(os.path.basename(fileName))
         figure_canvas_agg = FigureCanvasAgg(fig)
         figure_canvas_agg.draw()
