@@ -321,11 +321,11 @@ class BJParserFrame(tk.Frame):
             self.last_input_path = os.path.expanduser('~')
         if not self.outdir:
             self.outdir = os.path.join(self.indir, 'parsed')
-        self.FileListBoxFrameLabelVar.set("Output to: %s"% (self.outdir) )
+        self.FileListBoxFrameLabelVar.set("Output to: %s"% (
+                os.path.join(self.indir,self.outdir) ))
 
 
     def Parse(self):
-        print("Nothing here yet")
         X = []
         for _fn in self.selection_cache['Keep_files']:
             fn = os.path.join(self.indir, _fn)
@@ -338,7 +338,7 @@ class BJParserFrame(tk.Frame):
         while hist.is_alive():    
             self.handler.flush()
             time.sleep(1)
-        print(hist.fits)
+#        print(hist.fits)
         self.DisplayHistogramData('Keep', self.KeepPlotCanvas, hist)
 
 
