@@ -23,7 +23,7 @@ import gui.tooltip as tip
 from util.Cache import Cache
 from util.logger import GUIHandler
 from parse.read import ReadIVS
-from plot.canvasplotter import XYplot
+from plot.canvasplotter import XYplot, XYZplot
 #import matplotlib.pyplot as plt
 #import matplotlib.backends.tkagg as tkagg
 
@@ -183,19 +183,15 @@ class BJParserFrame(tk.Frame):
             self.logger.debug("%s file selection unchanged.", _prefix)
             self.handler.flush()
             return
-        if len(selected) > 1:
-            return
+
         setattr(self, _prefix+'_selected_files', selected)
-        try:
-            _f = os.path.join(self.indir, selected[-1])
-            self.logger.debug("Got %s from %s list", _f, _prefix)
-            self.handler.flush()
-            if os.path.exists(_f):
-                self.DisplayDataFigure(_prefix, 
-                                       getattr(self, _prefix+'PlotCanvas'), _f)
-        except IndexError:
-            setattr(self, _prefix+'fig_photo', None)
-                
+        if len(selected) == 1:
+            self.DisplayDataFigure(_prefix, 
+                                   getattr(self, _prefix+'PlotCanvas'), selected[-1])
+        elif len(selected) > 1:
+            self.DisplayDataFigures(_prefix, 
+                                   getattr(self, _prefix+'PlotCanvas'), selected)
+    
 
     def ParseClick(self):
         self.checkOptions()
@@ -234,6 +230,8 @@ class BJParserFrame(tk.Frame):
     def __updateFileListBox(self, _prefix):
             getattr(self, _prefix+'filelist').set(" ".join([x.replace(" ","_") 
                 for x in self.selection_cache[_prefix+'_files']]))
+            if len(self.selection_cache[_prefix+'_files']) == 0:
+                setattr(self, _prefix+'fig_photo', None)
 
     def KeepFileClick(self, event=None):
         self.__FileClick('Toss', 'Keep')
@@ -294,29 +292,61 @@ class BJParserFrame(tk.Frame):
     def Parse(self):
         print("Nothing here yet")
     
-    def DisplayDataFigure(self, label, master, fn):
+    def DisplayDataFigure(self, label, master, _fn):
         #https://matplotlib.org/gallery/user_interfaces/embedding_in_tk_canvas_sgskip.html
+        fn = os.path.join(self.indir, _fn)
         self.ivs_files.AddFile(fn)
-        self.handler.flush()
-#        fig = mpl.figure.Figure(figsize=(5, 4), dpi=80)
-#        ax = fig.add_subplot(111)
-#        ax.plot(self.ivs_files[fileName]['d'], self.ivs_files[fileName]['I'])
-#        fig.suptitle(os.path.basename(fileName))
-#        figure_canvas_agg = FigureCanvasAgg(fig)
-#        figure_canvas_agg.draw()
-#        figure_x, figure_y, figure_w, figure_h = fig.bbox.bounds
-#        figure_w, figure_h = int(figure_w), int(figure_h)
-        
+        self.handler.flush()      
         labels={'title':os.path.basename(fn),
                 'X': 'distance',
                 'Y': 'current'}
-        _fig_photo = XYplot(master, getattr(self, label+'PlotCanvas'), 
-                                                self.ivs_files[fn]['d'],
-                                                self.ivs_files[fn]['I'],
-                                                labels)
-        #setattr(self, label+'fig_photo', tk.PhotoImage(master=master, width=figure_w, height=figure_h))
-        setattr(self, label+'fig_photo', _fig_photo)
-#        getattr(self, label+'PlotCanvas').create_image(figure_w/2, 
-#               figure_h/2, image=getattr(self, label+'fig_photo'))    
-#        # Unfortunately, there's no accessor for the pointer to the native renderer
-#        tkagg.blit(getattr(self, label+'fig_photo'), figure_canvas_agg.get_renderer()._renderer, colormode=2)
+        plotter = XYplot(self.ivs_files[fn]['d'],                       
+                         self.ivs_files[fn]['I'],
+                         labels)
+        plotter.Draw(tk.PhotoImage(master=master,
+                                   width=plotter.figure_w,
+                                   height=plotter.figure_h))
+        #plotter.Draw(fig_photo)
+        getattr(self, label+'PlotCanvas').create_image(plotter.figure_w/2, 
+               plotter.figure_h/2, image=plotter.fig_photo)
+        setattr(self, label+'fig_photo', plotter)
+
+    def DisplayDataFigures(self, label, master, fns):
+        #https://matplotlib.org/gallery/user_interfaces/embedding_in_tk_canvas_sgskip.html
+        _title = ''
+       
+        X, Y, Z = [], [], []
+        for _fn in fns:
+            fn = os.path.join(self.indir, _fn)
+            self.ivs_files.AddFile(fn)
+            self.handler.flush()
+            _title += os.path.basename(fn)+' '
+            X.append([])
+            Y.append([])
+            Z.append([])
+            for i in range(0, len(self.ivs_files[fn]['I'])):
+                X[-1].append(self.ivs_files[fn]['d'][i])
+                Y[-1].append(self.ivs_files[fn]['I'][i])
+
+        
+        labels={'title':_title,
+                'X': 'distance',
+                'Y': 'trace',
+                'Z': 'current'}
+        plotter = XYZplot(X, Y, labels)
+        
+#        for i in range(0, len(X)):
+#            plotter.Add(X[i], Y[i], i)
+
+        
+#        plotter = XYZplot(X,                       
+#                          Y,
+#                          Z,
+#                         labels)
+        plotter.Draw(tk.PhotoImage(master=master,
+                                   width=plotter.figure_w,
+                                   height=plotter.figure_h))
+        #plotter.Draw(fig_photo)
+        getattr(self, label+'PlotCanvas').create_image(plotter.figure_w/2, 
+               plotter.figure_h/2, image=plotter.fig_photo)
+        setattr(self, label+'fig_photo', plotter)
