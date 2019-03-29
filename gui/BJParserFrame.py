@@ -13,16 +13,20 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import font
 from tkinter import filedialog
-import matplotlib as mpl
-mpl.use('TkAgg')
-import matplotlib.pyplot as plt
-import matplotlib.backends.tkagg as tkagg
-from matplotlib.backends.backend_agg import FigureCanvasAgg
+#import matplotlib as mpl
+#mpl.use('TkAgg')
+#import matplotlib.pyplot as plt
+#import matplotlib.backends.tkagg as tkagg
+#from matplotlib.backends.backend_agg import FigureCanvasAgg
 import gui.colors as cl
 import gui.tooltip as tip
 from util.Cache import Cache
 from util.logger import GUIHandler
 from parse.read import ReadIVS
+from plot.canvasplotter import XYplot
+#import matplotlib.pyplot as plt
+#import matplotlib.backends.tkagg as tkagg
+
 
 
 MASTER_LOCK = threading.RLock()
@@ -290,20 +294,29 @@ class BJParserFrame(tk.Frame):
     def Parse(self):
         print("Nothing here yet")
     
-    def DisplayDataFigure(self, label, master, fileName):
-        self.ivs_files.AddFile(fileName)
-        self.handler.flush()
-        fig = mpl.figure.Figure(figsize=(5, 4), dpi=80)
-        ax = fig.add_subplot(111)
-        ax.plot(self.ivs_files[fileName]['d'], self.ivs_files[fileName]['I'])
-        fig.suptitle(os.path.basename(fileName))
-        figure_canvas_agg = FigureCanvasAgg(fig)
-        figure_canvas_agg.draw()
-        figure_x, figure_y, figure_w, figure_h = fig.bbox.bounds
-        figure_w, figure_h = int(figure_w), int(figure_h)
+    def DisplayDataFigure(self, label, master, fn):
         #https://matplotlib.org/gallery/user_interfaces/embedding_in_tk_canvas_sgskip.html
-        setattr(self, label+'fig_photo', tk.PhotoImage(master=master, width=figure_w, height=figure_h))
-        getattr(self, label+'PlotCanvas').create_image(figure_w/2, 
-               figure_h/2, image=getattr(self, label+'fig_photo'))    
-        # Unfortunately, there's no accessor for the pointer to the native renderer
-        tkagg.blit(getattr(self, label+'fig_photo'), figure_canvas_agg.get_renderer()._renderer, colormode=2)
+        self.ivs_files.AddFile(fn)
+        self.handler.flush()
+#        fig = mpl.figure.Figure(figsize=(5, 4), dpi=80)
+#        ax = fig.add_subplot(111)
+#        ax.plot(self.ivs_files[fileName]['d'], self.ivs_files[fileName]['I'])
+#        fig.suptitle(os.path.basename(fileName))
+#        figure_canvas_agg = FigureCanvasAgg(fig)
+#        figure_canvas_agg.draw()
+#        figure_x, figure_y, figure_w, figure_h = fig.bbox.bounds
+#        figure_w, figure_h = int(figure_w), int(figure_h)
+        
+        labels={'title':os.path.basename(fn),
+                'X': 'distance',
+                'Y': 'current'}
+        _fig_photo = XYplot(master, getattr(self, label+'PlotCanvas'), 
+                                                self.ivs_files[fn]['d'],
+                                                self.ivs_files[fn]['I'],
+                                                labels)
+        #setattr(self, label+'fig_photo', tk.PhotoImage(master=master, width=figure_w, height=figure_h))
+        setattr(self, label+'fig_photo', _fig_photo)
+#        getattr(self, label+'PlotCanvas').create_image(figure_w/2, 
+#               figure_h/2, image=getattr(self, label+'fig_photo'))    
+#        # Unfortunately, there's no accessor for the pointer to the native renderer
+#        tkagg.blit(getattr(self, label+'fig_photo'), figure_canvas_agg.get_renderer()._renderer, colormode=2)

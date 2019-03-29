@@ -11,7 +11,7 @@ import os
 import time
 import json
 
-CACHEFILE = os.path.join(os.environ['HOME'], ".cache/STMBJParse.cache")
+CACHEFILE = os.path.join(os.path.expanduser('~'), ".cache/STMBJParse.cache")
 
 class Cache():
     
