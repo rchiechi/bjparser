@@ -252,6 +252,9 @@ class BJParserFrame(tk.Frame):
         if len(self.selection_cache['Keep_files']):    
             self.updateKeepFileListBox()
             self.updateTossFileListBox()
+        self.logger.debug("Input directory is %s", self.indir)
+        if not self.outdir:
+            self.outdir = os.path.join(self.indir, 'parsed')
         self.checkOptions()
            
     def updateKeepFileListBox(self):
@@ -303,11 +306,14 @@ class BJParserFrame(tk.Frame):
         
         
     def SpawnOutputDialogClick(self):
-        outdir = tk.filedialog.askdirectory(title="Select Output Directory", initialdir=self.outdir)
+        if not self.outdir and self.indir:
+            self.outdir = self.indir
+        outdir = tk.filedialog.askdirectory(title="Select Output Directory", 
+                                            initialdir=self.outdir)
         if os.path.exists(outdir):
             self.outdir = outdir
             self.UpdateFileListBoxFrameLabel()
-
+        self.checkOptions()
     
     def Quit(self):
         for c in self.child_threads:
@@ -319,10 +325,11 @@ class BJParserFrame(tk.Frame):
             self.cache['last_input_path'] = os.getcwd()
         if not os.path.exists(self.cache['last_input_path']):
             self.last_input_path = os.path.expanduser('~')
-        if not self.outdir:
-            self.outdir = os.path.join(self.indir, 'parsed')
-        self.FileListBoxFrameLabelVar.set("Output to: %s"% (
-                os.path.join(self.indir,self.outdir) ))
+#        if not self.outdir:
+#            self.outdir = os.path.join(self.indir, 'parsed')
+#            self.logger.debug("Set outdir to %s", self.outdir)
+        self.handler.flush()
+        self.FileListBoxFrameLabelVar.set("Output to: %s"% (self.outdir) )
 
 
     def Parse(self):
