@@ -27,6 +27,7 @@ from util.Cache import Cache
 from util.logger import GUIHandler
 from parse.read import ReadIVS
 from plot.canvasplotter import XYplot, XYZplot, Histplot
+from parse.GHistogram import GHistogram
 #import matplotlib.pyplot as plt
 #import matplotlib.backends.tkagg as tkagg
 
@@ -228,7 +229,10 @@ class BJParserFrame(tk.Frame):
         self.checkOptions()
         self.indir = filedialog.askdirectory(title="Files to parse",  \
                         initialdir=self.cache['last_input_path'])
-        self.cache['last_input_path'] = self.indir
+        if os.path.exists(self.indir):
+            self.cache['last_input_path'] = self.indir
+        else:
+            return
         
         self.selection_cache = Cache(self.logger, os.path.join(
                 self.indir, 'STMBJParse.cache'))
@@ -236,9 +240,10 @@ class BJParserFrame(tk.Frame):
             self.selection_cache['Keep_files'] = []      
         if not self.selection_cache['Toss_files']:
             self.selection_cache['Toss_files'] = []
-        
+        fns = os.listdir(self.indir)
+        fns.sort()
         if not self.selection_cache['Keep_files']:
-            for _f in os.listdir(self.indir):
+            for _f in fns:
                 if _f[-3:].lower() == self.opts.extension:
                     if os.path.isfile(os.path.join(self.indir,_f)):
                         self.selection_cache['Keep_files'].append(_f)
@@ -247,6 +252,7 @@ class BJParserFrame(tk.Frame):
         if len(self.selection_cache['Keep_files']):    
             self.updateKeepFileListBox()
             self.updateTossFileListBox()
+        self.checkOptions()
            
     def updateKeepFileListBox(self):
         self.__updateFileListBox('Keep')
@@ -325,7 +331,34 @@ class BJParserFrame(tk.Frame):
             fn = os.path.join(self.indir, _fn)
             self.ivs_files.AddFile(fn)    
             X += self.ivs_files[fn]['I']
-        G = np.array(X)*(1e-9)/0.1/0.0000775
+#        alive = threading.Event()
+#        alive.set()
+        hist = GHistogram(self.logger, X)
+        hist.run()
+        while hist.is_alive():    
+            self.handler.flush()
+            time.sleep(1)
+        print(hist.fits)
+        self.DisplayHistogramData('Keep', self.KeepPlotCanvas, hist)
+
+
+    def DisplayHistogramData(self, label, master, hist):
+        
+        labels={'title':'G Histogram',
+                'X': 'G/G0',
+                'Y': 'Frequency'}
+        plotter = Histplot(hist.fits['bin_centers'], 
+                           hist.fits['freq'],
+                           hist.fits['fit'],
+                           labels)
+
+        plotter.Draw(tk.PhotoImage(master=master,
+                                   width=plotter.figure_w,
+                                   height=plotter.figure_h))
+        getattr(self, label+'PlotCanvas').create_image(plotter.figure_w/2, 
+               plotter.figure_h/2, image=plotter.fig_photo)
+        setattr(self, label+'fig_photo', plotter)
+#        G = np.array(X)*(1e-9)/0.1/0.0000775
         #alive = threading.Event()
         #alive.set()
 #        self.child_threads.append(WaitThread(self.logger,
@@ -342,9 +375,9 @@ class BJParserFrame(tk.Frame):
 #            self.handler.flush()
 #            time.sleep(1)
 #        self.child_threads[-1].plotter.show()
-        hist = Histplot(G)
+#        hist = Histplot(G)
         #alive.clear()
-        hist.show()
+#        hist.show()
         
 
     

@@ -68,20 +68,46 @@ class XYZplot:
         
 class Histplot:
     
-    def __init__(self, G, lables={}):
-        if not lables:
+    def __init__(self, X, Y, Y_fit, labels={}):
+        if not labels:
             labels={'title':'Histogram',
                     'X':'G',
                     'Y':'counts'}
+        fig = mpl.figure.Figure(figsize=(5, 3.5), dpi=80)
         
-        #X = X/G = [i*(1e-9)/0.1/0.0000775 for i in current]
-        n, bins, patches = plt.hist(G, 100, density=True, facecolor='g', alpha=0.75)
-        plt.xlabel(labels['X'], fontsize=14)
-        plt.ylabel(labels['Y'], fontsize=14)
-        plt.title(labels['title'])
-        
-    def show(self):
-        plt.gca()
+        ax = fig.add_subplot(111)
+        ax.plot(X, Y_fit, lw=2.0, color='b', label='Fit')
+#        ax.bar(X, Y, width=0.1, color='r')
+
+        ax.set_xlabel(labels['X'])
+        ax.set_ylabel(labels['Y'])
+
+        fig.suptitle(labels['title'])            
+        self.figure_canvas_agg = FigureCanvasAgg(fig)
+        self.figure_canvas_agg.draw()
+        figure_x, figure_y, figure_w, figure_h = fig.bbox.bounds
+        self.figure_w, self.figure_h = int(figure_w), int(figure_h)
+
+    def Draw(self, fig_photo):  
+        # Unfortunately, there's no accessor for the pointer to the native renderer
+        self.fig_photo = fig_photo
+        tkagg.blit(self.fig_photo, self.figure_canvas_agg.get_renderer()._renderer, colormode=2)
+            
+    
+#    def __init__(self, G, lables={}):
+#        if not lables:
+#            labels={'title':'Histogram',
+#                    'X':'G',
+#                    'Y':'counts'}
+#        
+#        #X = X/G = [i*(1e-9)/0.1/0.0000775 for i in current]
+#        n, bins, patches = plt.hist(G, 100, density=True, facecolor='g', alpha=0.75)
+#        plt.xlabel(labels['X'], fontsize=14)
+#        plt.ylabel(labels['Y'], fontsize=14)
+#        plt.title(labels['title'])
+#        
+#    def show(self):
+#        plt.gca()
         plt.show()
 
 #        fig = plt.figure(figsize=(16,10))
