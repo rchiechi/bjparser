@@ -34,8 +34,6 @@ class BJParserFrame(tk.Frame):
     outdir=str()
     Keep_selected_files = []
     Toss_selected_files = []
-    Keep_files = []
-    Toss_files = []
     style = ttk.Style()
 
     boolmap = {1:True, 0:False}
@@ -202,15 +200,26 @@ class BJParserFrame(tk.Frame):
         self.indir = filedialog.askdirectory(title="Files to parse",  \
                         initialdir=self.cache['last_input_path'])
         self.cache['last_input_path'] = self.indir
-        for _f in os.listdir(self.indir):
-            if _f[-3:].lower() == self.opts.extension:
-                if os.path.isfile(os.path.join(self.indir,_f)):
-                    self.Keep_files.append(_f)
-            else:
-                self.logger.debug("Skipping %s", _f)
-        if len(self.Keep_files):    
+        
+        self.selection_cache = Cache(self.logger, os.path.join(
+                self.indir, 'STMBJParse.cache'))
+        if not self.selection_cache['Keep_files']:
+            self.selection_cache['Keep_files'] = []      
+#            self.Keep_files = self.selection_cache['Keep_files']
+        if not self.selection_cache['Toss_files']:
+            self.selection_cache['Toss_files'] = []
+        
+        if not self.selection_cache['Keep_files']:
+            for _f in os.listdir(self.indir):
+                if _f[-3:].lower() == self.opts.extension:
+                    if os.path.isfile(os.path.join(self.indir,_f)):
+                        self.selection_cache['Keep_files'].append(_f)
+                else:
+                    self.logger.debug("Skipping %s", _f)
+        if len(self.selection_cache['Keep_files']):    
             self.updateKeepFileListBox()
-            
+            self.updateTossFileListBox()
+           
 
     def updateKeepFileListBox(self):
         self.__updateFileListBox('Keep')
@@ -220,7 +229,7 @@ class BJParserFrame(tk.Frame):
 
     def __updateFileListBox(self, _prefix):
             getattr(self, _prefix+'filelist').set(" ".join([x.replace(" ","_") 
-                for x in getattr(self, _prefix+'_files')]))
+                for x in self.selection_cache[_prefix+'_files']]))
 #            for _f in getattr(self, _prefix+'_files'):
 #                getattr(self.ivs_files, _prefix+'File')(os.path.join(self.indir,_f))
 
@@ -237,18 +246,18 @@ class BJParserFrame(tk.Frame):
                     for x in getattr(self, _from+'FileListBox').curselection()]
         tomove = []
         filelist = []
-        for i in range(0, len(getattr(self, _from+'_files'))):
+        for i in range(0, len(self.selection_cache[_from+'_files'])):
             for s in selected:
-                if getattr(self, _from+'_files')[i].replace(" ","_") == s:
+                if self.selection_cache[_from+'_files'][i].replace(" ","_") == s:
                     tomove.append(i)
         
-        for i in range(0, len(getattr(self, _from+'_files'))):
+        for i in range(0, len(self.selection_cache[_from+'_files'])):
             if i not in tomove:
-                filelist.append(getattr(self, _from+'_files')[i])
+                filelist.append(self.selection_cache[_from+'_files'][i])
             else:
-                getattr(self, _to+'_files').append(getattr(self, _from+'_files')[i])
-        setattr(self, _from+'_files', filelist)
-        getattr(self, _from+'FileListBox').selection_clear(0,tk.END)
+                self.selection_cache[_to+'_files'].append(self.selection_cache[_from+'_files'][i])
+        self.selection_cache[_from+'_files'] = filelist
+        #getattr(self, _from+'FileListBox').selection_clear(0,tk.END)
         #getattr(self, _from+'FileListBox').selection_set(selected[-1])
         self.__updateFileListBox(_to)
         self.__updateFileListBox(_from)
@@ -271,7 +280,7 @@ class BJParserFrame(tk.Frame):
         if not self.outdir:
             self.outdir = os.path.join(self.indir, 'parsed')
         self.FileListBoxFrameLabelVar.set("Output to: %s"% (self.outdir) )
-        
+
 
     def Parse(self):
         print("Nothing here yet")
