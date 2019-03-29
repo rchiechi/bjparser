@@ -9,6 +9,9 @@ import os
 import logging
 import platform
 import threading
+import numpy as np
+#from queue import Queue
+import time
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font
@@ -23,7 +26,7 @@ import gui.tooltip as tip
 from util.Cache import Cache
 from util.logger import GUIHandler
 from parse.read import ReadIVS
-from plot.canvasplotter import XYplot, XYZplot
+from plot.canvasplotter import XYplot, XYZplot, Histplot
 #import matplotlib.pyplot as plt
 #import matplotlib.backends.tkagg as tkagg
 
@@ -31,6 +34,29 @@ from plot.canvasplotter import XYplot, XYZplot
 
 MASTER_LOCK = threading.RLock()
 
+class PlotThread(threading.Thread):
+    
+    def __init__(self, plotter, args):
+        threading.Thread.__init__(self)
+        self.plotter = plotter
+        self.args = args
+    def run(self):
+        with MASTER_LOCK:
+            self.plotter(*self.args)
+
+class WaitThread(threading.Thread):
+    
+    def __init__(self, logger, handler, alive, waiting_for):
+        threading.Thread.__init__(self)
+        self.logger = logger
+        self.alive = alive
+        self.handler = handler
+        self.waiting_for = waiting_for
+    def run(self):
+        while self.alive.isSet():
+            self.logger.info("Waiting for %s", self.waiting_for)
+            self.handler.flush()
+            time.sleep(5)
 
 class BJParserFrame(tk.Frame):
 
@@ -39,6 +65,7 @@ class BJParserFrame(tk.Frame):
     Keep_selected_files = []
     Toss_selected_files = []
     style = ttk.Style()
+    child_threads = []
 
     boolmap = {1:True, 0:False}
     
@@ -277,6 +304,8 @@ class BJParserFrame(tk.Frame):
 
     
     def Quit(self):
+        for c in self.child_threads:
+            c.join(timeout=10)
         self.master.destroy()
 
     def checkOptions(self):       
@@ -291,6 +320,33 @@ class BJParserFrame(tk.Frame):
 
     def Parse(self):
         print("Nothing here yet")
+        X = []
+        for _fn in self.selection_cache['Keep_files']:
+            fn = os.path.join(self.indir, _fn)
+            self.ivs_files.AddFile(fn)    
+            X += self.ivs_files[fn]['I']
+        G = np.array(X)*(1e-9)/0.1/0.0000775
+        #alive = threading.Event()
+        #alive.set()
+#        self.child_threads.append(WaitThread(self.logger,
+#                                              self.handler,
+#                                              alive,
+#                                              'histogram parser'
+#                                              ))
+#        self.child_threads.append(PlotThread(Histplot,
+#                                      [X],
+#                                      ))
+#        self.child_threads[-1].start()
+#        while self.child_threads[-1].is_alive():
+#            self.logger.info("Waiting for histogram parser.")
+#            self.handler.flush()
+#            time.sleep(1)
+#        self.child_threads[-1].plotter.show()
+        hist = Histplot(G)
+        #alive.clear()
+        hist.show()
+        
+
     
     def DisplayDataFigure(self, label, master, _fn):
         #https://matplotlib.org/gallery/user_interfaces/embedding_in_tk_canvas_sgskip.html
