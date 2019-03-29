@@ -182,14 +182,16 @@ class BJParserFrame(tk.Frame):
         if len(selected) > 1:
             return
         setattr(self, _prefix+'_selected_files', selected)
-        _f = os.path.join(self.indir, selected[-1])
-        self.logger.debug("Got %s from %s list", _f, _prefix)
-        self.handler.flush()
-        if os.path.exists(_f):
-            self.DisplayDataFigure(_prefix, 
-                                   getattr(self, _prefix+'PlotCanvas'), _f)
-        
-            
+        try:
+            _f = os.path.join(self.indir, selected[-1])
+            self.logger.debug("Got %s from %s list", _f, _prefix)
+            self.handler.flush()
+            if os.path.exists(_f):
+                self.DisplayDataFigure(_prefix, 
+                                       getattr(self, _prefix+'PlotCanvas'), _f)
+        except IndexError:
+            setattr(self, _prefix+'fig_photo', None)
+                
 
     def ParseClick(self):
         self.checkOptions()
@@ -205,7 +207,6 @@ class BJParserFrame(tk.Frame):
                 self.indir, 'STMBJParse.cache'))
         if not self.selection_cache['Keep_files']:
             self.selection_cache['Keep_files'] = []      
-#            self.Keep_files = self.selection_cache['Keep_files']
         if not self.selection_cache['Toss_files']:
             self.selection_cache['Toss_files'] = []
         
@@ -220,7 +221,6 @@ class BJParserFrame(tk.Frame):
             self.updateKeepFileListBox()
             self.updateTossFileListBox()
            
-
     def updateKeepFileListBox(self):
         self.__updateFileListBox('Keep')
 
@@ -230,9 +230,6 @@ class BJParserFrame(tk.Frame):
     def __updateFileListBox(self, _prefix):
             getattr(self, _prefix+'filelist').set(" ".join([x.replace(" ","_") 
                 for x in self.selection_cache[_prefix+'_files']]))
-#            for _f in getattr(self, _prefix+'_files'):
-#                getattr(self.ivs_files, _prefix+'File')(os.path.join(self.indir,_f))
-
 
     def KeepFileClick(self, event=None):
         self.__FileClick('Toss', 'Keep')
@@ -244,6 +241,10 @@ class BJParserFrame(tk.Frame):
         self.checkOptions()
         selected = [getattr(self, _from+'FileListBox').get(x) 
                     for x in getattr(self, _from+'FileListBox').curselection()]
+        if selected:
+            idx = getattr(self, _from+'FileListBox').curselection()[0]
+        else:
+            idx = -1
         tomove = []
         filelist = []
         for i in range(0, len(self.selection_cache[_from+'_files'])):
@@ -257,10 +258,14 @@ class BJParserFrame(tk.Frame):
             else:
                 self.selection_cache[_to+'_files'].append(self.selection_cache[_from+'_files'][i])
         self.selection_cache[_from+'_files'] = filelist
-        #getattr(self, _from+'FileListBox').selection_clear(0,tk.END)
-        #getattr(self, _from+'FileListBox').selection_set(selected[-1])
+        getattr(self, _from+'FileListBox').selection_clear(0,tk.END)
+        if idx > -1:
+            getattr(self, _from+'FileListBox').activate(idx)
+            getattr(self, _from+'FileListBox').selection_set(idx)
         self.__updateFileListBox(_to)
         self.__updateFileListBox(_from)
+        self.__ListBoxClick(_from)
+        
         
     def SpawnOutputDialogClick(self):
         outdir = tk.filedialog.askdirectory(title="Select Output Directory", initialdir=self.outdir)
