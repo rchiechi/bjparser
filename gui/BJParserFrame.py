@@ -6,10 +6,11 @@ Created on Wed Mar 27 13:18:21 2019
 @author: rchiechi
 """
 import os
+#import sys
 import logging
 import platform
 import threading
-import numpy as np
+#import numpy as np
 #from queue import Queue
 import time
 import tkinter as tk
@@ -22,14 +23,14 @@ from tkinter import filedialog
 #import matplotlib.backends.tkagg as tkagg
 #from matplotlib.backends.backend_agg import FigureCanvasAgg
 import gui.colors as cl
-import gui.tooltip as tip
+#import gui.tooltip as tip
 from util.Cache import Cache
 from util.logger import GUIHandler
 from parse.read import ReadIVS
 from plot.canvasplotter import XYplot, XYZplot, Histplot
 from parse.GHistogram import GHistogram
 from parse.write import Ghistwriter
-from gui.BusyWidget import BusyWidget
+#from gui.BusyWidget import BusyWidget
 #import matplotlib.pyplot as plt
 #import matplotlib.backends.tkagg as tkagg
 
@@ -70,11 +71,14 @@ class BJParserFrame(tk.Frame):
     style = ttk.Style()
     child_threads = []
 
+
     boolmap = {1:True, 0:False}
     
     def __init__(self, opts, master=None):
         tk.Frame.__init__(self, master)
-        self.opts = opts        
+        self.opts = opts
+        self.alive = threading.Event()
+        self.alive.set()
         self.master.tk_setPalette(background=cl.GREY,
                                   activeBackground=cl.GREY)
         self.master.title("RCCLab STMBJ Data Parser")
@@ -198,6 +202,8 @@ class BJParserFrame(tk.Frame):
             self.master.attributes('-topmost', 0)        
 
     def QuitClick(self):
+        self.alive.clear()
+        print("Quitting...")
         self.Quit()
 
     def KeepListBoxClick(self, event):
@@ -240,6 +246,7 @@ class BJParserFrame(tk.Frame):
         #self.Parse()
             
     def SpawnInputDialogClick(self):
+
         self.checkOptions()
         self.indir = filedialog.askdirectory(title="Files to parse",  \
                         initialdir=self.cache['last_input_path'])
@@ -270,6 +277,19 @@ class BJParserFrame(tk.Frame):
         if not self.outdir:
             self.outdir = os.path.join(self.indir, 'parsed')
         self.checkOptions()
+        self.child_threads.append({'thread':threading.Thread(target=self.BackgroundParseFiles)})
+        self.child_threads[-1]['thread'].name = 'IVS File parser'
+        self.child_threads[-1]['thread'].start()
+        
+    def BackgroundParseFiles(self): 
+        self.logger.info("Background IVS file parsing started.")
+        print("BACKGROUND PARSER")
+        for _fn in self.selection_cache['Keep_files']:
+            if not self.alive.is_set():
+                return
+            fn = os.path.join(self.indir, _fn)
+            self.ivs_files.AddFile(fn)
+        self.logger.info("Background IVS file parsing complete.")         
            
     def updateKeepFileListBox(self):
         self.__updateFileListBox('Keep')

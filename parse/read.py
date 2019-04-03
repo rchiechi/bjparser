@@ -38,21 +38,24 @@ class ReadIVS:
             df.drop(df.tail(1).index,inplace=True)
         except OSError as msg:
                     self.logger.warn("Skipping %s because %s", in_file ,str(msg))
-        self.frames[in_file] = df
+        with self.lock:
+            self.frames[in_file] = df
 
     def __readfile(self, fileName):
-        # Waaaaay too specific to one file format
+        if fileName in self.frames:
+            return
+        #TODO Waaaaay too specific to one file format
         distanceData = []
         currentData = []
         with open(fileName, 'rb') as fileData:
-            #self.logger.debug("Parsing %s", fileName)
             for lines in fileData.readlines()[105:-1]:
                 lines = lines.__str__()
                 lines = lines[2:-9]
                 lines = lines.split('\\t')
                 distanceData.append(float(lines[0]))
                 currentData.append(float(lines[1]))
-        self.frames[fileName] = {'d':distanceData, 'I':currentData}
+        with self.lock:
+            self.frames[fileName] = {'d':distanceData, 'I':currentData}
         
   
     def __contains__(self, key):
@@ -64,7 +67,6 @@ class ReadIVS:
         
     def __getitem__(self, key):
         return self.frames[key]
-    
 
     def AddFile(self, fn):
         self.KeepFile(fn)
@@ -73,8 +75,7 @@ class ReadIVS:
         self.TossFile(fn)
 
     def KeepFile(self, fn):
-        with self.lock:
-            self.__readfile(fn)
+        self.__readfile(fn)
         
     def TossFile(self, fn):
         with self.lock:
