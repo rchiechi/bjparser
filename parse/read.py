@@ -18,9 +18,10 @@ except ImportError as msg:
 
 class ReadIVS:
     
-    def __init__(self, logger, opts):
+    def __init__(self, logger, lock, opts):
         self.logger = logger
         self.opts = opts
+        self.lock = lock
         self.frames = {}
     
     def __read_file_as_df(self, in_file):
@@ -44,7 +45,7 @@ class ReadIVS:
         distanceData = []
         currentData = []
         with open(fileName, 'rb') as fileData:
-            self.logger.debug("Parsing %s", fileName)
+            #self.logger.debug("Parsing %s", fileName)
             for lines in fileData.readlines()[105:-1]:
                 lines = lines.__str__()
                 lines = lines[2:-9]
@@ -52,12 +53,14 @@ class ReadIVS:
                 distanceData.append(float(lines[0]))
                 currentData.append(float(lines[1]))
         self.frames[fileName] = {'d':distanceData, 'I':currentData}
+        
   
     def __contains__(self, key):
         return bool(key in self.frames)
         
     def __delitem__(self, key):
-        del(self.frames[key])
+        with self.lock:
+            del(self.frames[key])
         
     def __getitem__(self, key):
         return self.frames[key]
@@ -65,16 +68,19 @@ class ReadIVS:
 
     def AddFile(self, fn):
         self.KeepFile(fn)
+            
     def RemoveFile(self, fn):
         self.TossFile(fn)
 
     def KeepFile(self, fn):
-        self.__readfile(fn)
+        with self.lock:
+            self.__readfile(fn)
         
     def TossFile(self, fn):
-        if fn in self.frames:
-            del(self.frames[fn])
-    
+        with self.lock:
+            if fn in self.frames:
+                del(self.frames[fn])
+        
     def GetFile(self, fn):
         if fn in self.frames:
             return self.frames[fn]

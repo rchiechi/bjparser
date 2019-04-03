@@ -11,19 +11,24 @@ from scipy.optimize import curve_fit
 from scipy.stats import gmean,skew,skewtest,kurtosis,kurtosistest
 #import scipy.misc 
 import numpy as np
-import threading
+#import threading
 
-class GHistogram(threading.Thread):
+#class GHistogram(threading.Thread):
+class GHistogram:
+
     
     def __init__(self, logger, currentData):
-        threading.Thread.__init__(self)
+#        threading.Thread.__init__(self)
+        self.name = 'G-histogram parser'
 #        self.alive = alive
         self.I = currentData
         self.logger = logger
         self.histogram = {'freq':[0], 'bins':[0]}
         self.fits = {}
+        self.run()
         
     def run(self):
+        self.logger.debug("Starting %s thread", self.name)
 #        while self.alive.isSet():
         G = np.array(self.I)*(1e-9)/0.1/0.0000775
         try:
@@ -89,6 +94,7 @@ class GHistogram(threading.Thread):
                 "var":coeff[2], "bins":bins, "fit":hist_fit, "Gmean":Gm, "Gstd":Gs,\
                 "skew":skew(freq), "kurtosis":kurtosis(freq), "skewstat":skewstat, "skewpval":skewpval,
                 "kurtstat":kurtstat, "kurtpval":kurtpval}
+        self.logger.debug("%s thread run loop done", self.name)
 #            self.alive.clear()
             
 

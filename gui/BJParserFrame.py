@@ -28,6 +28,8 @@ from util.logger import GUIHandler
 from parse.read import ReadIVS
 from plot.canvasplotter import XYplot, XYZplot, Histplot
 from parse.GHistogram import GHistogram
+from parse.write import Ghistwriter
+from gui.BusyWidget import BusyWidget
 #import matplotlib.pyplot as plt
 #import matplotlib.backends.tkagg as tkagg
 
@@ -81,10 +83,12 @@ class BJParserFrame(tk.Frame):
         self.update_idletasks()
         self.__createWidgets()
         self.cache = Cache(self.logger)
-        self.ivs_files = ReadIVS(self.logger, self.opts)
+        self.ivs_files = ReadIVS(self.logger, MASTER_LOCK, self.opts)
         self.checkOptions()
-        self.ToFront()
+        self.ToFront()     
+        self.after('1000', self.WaitForThreads)
         self.mainloop()
+
 
     def __createWidgets(self):
         self.update()
@@ -222,8 +226,18 @@ class BJParserFrame(tk.Frame):
     
 
     def ParseClick(self):
+        if not hasattr(self, 'selection_cache'):
+            self.logger.error("No files selected.")
+            self.handler.flush()
+            return
         self.checkOptions()
-        self.Parse()
+        self.child_threads.append({'thread':threading.Thread(target=self.Parse),
+                                   'widgets':[self.ButtonParse, 
+                                              self.KeepFileListBox, 
+                                              self.TossFileListBox]})
+        self.child_threads[-1]['thread'].name = 'G-histogram parser'
+        self.child_threads[-1]['thread'].start()
+        #self.Parse()
             
     def SpawnInputDialogClick(self):
         self.checkOptions()
@@ -317,7 +331,10 @@ class BJParserFrame(tk.Frame):
     
     def Quit(self):
         for c in self.child_threads:
-            c.join(timeout=10)
+            try:
+                c['thread'].join(timeout=10)
+            except RuntimeError:
+                print("Thread %s not started yet" % c['thread'].name)
         self.master.destroy()
 
     def checkOptions(self):       
@@ -331,23 +348,75 @@ class BJParserFrame(tk.Frame):
         self.handler.flush()
         self.FileListBoxFrameLabelVar.set("Output to: %s"% (self.outdir) )
 
+    def WaitForThreads(self):
+        if len(self.child_threads):
+            print("THREAD RUNNING")
+            c = self.child_threads.pop()
+            if c['thread'].is_alive():
+                if 'widgets' in c:
+                    for w in c['widgets']:
+                        w['state'] = tk.DISABLED
+                self.child_threads.append(c)
+            else:
+                if 'widgets' in c:
+                    for w in c['widgets']:
+                        w['state'] = tk.NORMAL
+                if 'after' in c:
+                    tk.messagebox.showinfo("Complete", "%s completed." % c['thread'].name)
+                    c['after'][0](*c['after'][1])
+                
+        self.after('1000', self.WaitForThreads)
 
     def Parse(self):
+        self.logger.info("Reading file selection...")
+        self.handler.flush()
         X = []
         for _fn in self.selection_cache['Keep_files']:
             fn = os.path.join(self.indir, _fn)
             self.ivs_files.AddFile(fn)    
             X += self.ivs_files[fn]['I']
-#        alive = threading.Event()
-#        alive.set()
+        self.logger.info("Done!")
+        self.handler.flush()
         hist = GHistogram(self.logger, X)
-        hist.run()
-        while hist.is_alive():    
-            self.handler.flush()
-            time.sleep(1)
-#        print(hist.fits)
         self.DisplayHistogramData('Keep', self.KeepPlotCanvas, hist)
-
+#        with MASTER_LOCK:
+#            hist = {'thread':GHistogram(self.logger, X)}
+#            hist['after'] = (self.DisplayHistogramData, 
+#                ['Keep', self.KeepPlotCanvas, hist['thread']])
+#            hist['widget'] = self.ButtonParse
+#            self.child_threads.append(hist)
+#            self.child_threads[-1]['thread'].start()
+                
+#    def Parse(self):
+##        for c in self.child_threads:
+##            if c.is_alive():
+##                
+#            
+#
+#        X = []
+#
+#        for _fn in self.selection_cache['Keep_files']:
+#            fn = os.path.join(self.indir, _fn)
+#            self.ivs_files.AddFile(fn)    
+#            X += self.ivs_files[fn]['I']
+#        self.logger.info("Done!")
+#        self.handler.flush()
+##        busy = BusyWidget(self.KeepPlotCanvas)
+##        busy.Busy()
+#        hist = {'thread':GHistogram(self.logger, X)}
+#        hist['after'] = (self.DisplayHistogramData, 
+#            ['Keep', self.KeepPlotCanvas, hist['thread']])
+#        hist['widget'] = self.ButtonParse
+#        self.child_threads.append(hist)
+#        
+##        hist = threading.Thread(target=time.sleep, args=(5,))
+#        self.child_threads[-1]['thread'].start()
+##        self.child_threads[-1]['thread'].run()
+#        
+#
+##        busy.Free()
+##        self.DisplayHistogramData('Keep', self.KeepPlotCanvas, hist)
+##        self.handler.flush()
 
     def DisplayHistogramData(self, label, master, hist):
         
