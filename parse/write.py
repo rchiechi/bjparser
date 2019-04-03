@@ -28,6 +28,13 @@ def Ghistwriter(logger, outdir, Ghist):
         for i in range(0, len(Ghist.histogram['bins'])):
             writer.writerow(["%0.16f"%Ghist.histogram['bins'][i],
                              "%0.4f"%Ghist.histogram['freq'][i]])
+    fn = os.path.join(outdir, 'Fit_Parameters.txt')
+    with open(fn, 'w') as fh:
+        fh.write('Mean: %0.16f\n' % Ghist.fits["mean"])
+        fh.write('Standard Deviation: %0.16f\n' % Ghist.fits["std"])
+        fh.write('Variance: %0.16f\n' % Ghist.fits["var"])
+        fh.write('Skew: %0.16f\n' % Ghist.fits["skew"])
+        fh.write('Kurtosis: %0.16f\n' % Ghist.fits["kurtosis"])       
 
 #            self.fits = {"bin_centers":bin_centers, "bins":bins, "freq":freq, "mean":coeff[1], "std":coeff[2], \
 #                "var":coeff[2], "bins":bins, "fit":hist_fit, "Gmean":Gm, "Gstd":Gs,\

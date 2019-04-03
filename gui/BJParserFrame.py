@@ -326,7 +326,6 @@ class BJParserFrame(tk.Frame):
                                             initialdir=self.outdir)
         if os.path.exists(outdir):
             self.outdir = outdir
-            self.UpdateFileListBoxFrameLabel()
         self.checkOptions()
     
     def Quit(self):
