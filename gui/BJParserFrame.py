@@ -263,7 +263,7 @@ class BJParserFrame(tk.Frame):
                 self.selection_cache['Toss_files'].append(fn)
             else:
                 tokeep.append(fn)
-            self.logger.info("Keeping %s traces", len(tokeep))
+                self.logger.info("Keeping %s traces", len(tokeep))
         self.logger.info("Search for plateaux done.")
         self.selection_cache['Keep_files'] = tokeep            
         self.__updateFileListBox('Toss')
