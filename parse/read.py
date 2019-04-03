@@ -57,7 +57,7 @@ class ReadIVS:
         with self.lock:
             self.frames[fileName] = {'d':distanceData, 'I':currentData}
         
-  
+    
     def __contains__(self, key):
         return bool(key in self.frames)
         
@@ -67,6 +67,9 @@ class ReadIVS:
         
     def __getitem__(self, key):
         return self.frames[key]
+
+    def keys(self):
+        return self.frames.keys()
 
     def AddFile(self, fn):
         self.KeepFile(fn)

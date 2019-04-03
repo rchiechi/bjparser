@@ -27,7 +27,7 @@ class XYplot:
         ax = fig.add_subplot(111)
         ax.plot(X,Y)
         ax.set_xlabel(labels['X'])
-        ax.set_ylabel(labels['X'])
+        ax.set_ylabel(labels['Y'])
         fig.suptitle(labels['title'])
         self.figure_canvas_agg = FigureCanvasAgg(fig)
         self.figure_canvas_agg.draw()

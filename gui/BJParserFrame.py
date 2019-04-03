@@ -30,6 +30,7 @@ from parse.read import ReadIVS
 from plot.canvasplotter import XYplot, XYZplot, Histplot
 from parse.GHistogram import GHistogram
 from parse.write import Ghistwriter
+from parse.Guess import CountPlateaux
 #from gui.BusyWidget import BusyWidget
 #import matplotlib.pyplot as plt
 #import matplotlib.backends.tkagg as tkagg
@@ -70,6 +71,7 @@ class BJParserFrame(tk.Frame):
     Toss_selected_files = []
     style = ttk.Style()
     child_threads = []
+    all_files_parsed = False
 
 
     boolmap = {1:True, 0:False}
@@ -134,6 +136,7 @@ class BJParserFrame(tk.Frame):
                {'name':'TossFile','text':'Toss Files','side':tk.LEFT},
                {'name':'KeepFile','text':'Keep Files','side':tk.LEFT},
                {'name':'SpawnOutputDialog','text':'Choose Output Directory','side':tk.LEFT},
+               {'name':'Guess','text':'Guess which plots to toss', 'side':tk.LEFT},
                {'name':'Parse','text':'Parse!','side':tk.LEFT}
                ]
 
@@ -214,6 +217,7 @@ class BJParserFrame(tk.Frame):
         self.__ListBoxClick('Toss')
 
 
+
     def __ListBoxClick(self, _prefix):
         selected = [getattr(self, _prefix+'FileListBox').get(x) 
                 for x in getattr(self, _prefix+'FileListBox').curselection()]
@@ -230,7 +234,46 @@ class BJParserFrame(tk.Frame):
             self.DisplayDataFigures(_prefix, 
                                    getattr(self, _prefix+'PlotCanvas'), selected)
     
-
+    def GuessClick(self):
+        if not hasattr(self, 'selection_cache'):
+            self.logger.error("No files loaded")
+            self.handler.flush()
+            return
+        if not self.all_files_parsed:
+            self.logger.error("Wait for parser to complete")
+            return
+        self.child_threads.append({'thread':threading.Thread(target=self.doGuess),
+                                    'widgets':[self.ButtonGuess,
+                                               self.ButtonParse,
+                                               self.KeepFileListBox, 
+                                               self.TossFileListBox]})
+        self.child_threads[-1]['thread'].name = 'Plateaux Guesser'
+        self.child_threads[-1]['thread'].start()
+        
+    def doGuess(self):
+        self.logger.info("Starting search for plateaux...")
+        tokeep = []
+        for fn in self.selection_cache['Keep_files']:
+            if not self.alive.is_set():
+                break
+            _fn = os.path.join(self.indir, fn)
+            n = CountPlateaux(self.ivs_files[_fn]['d'],
+                             self.ivs_files[_fn]['I'])
+            if n < 20:
+                self.selection_cache['Toss_files'].append(fn)
+            else:
+                tokeep.append(fn)
+            self.logger.info("Keeping %s traces", len(tokeep))
+        self.logger.info("Search for plateaux done.")
+        self.selection_cache['Keep_files'] = tokeep            
+        self.__updateFileListBox('Toss')
+        self.__updateFileListBox('Keep')
+        self.__ListBoxClick('Keep')
+        
+        kept = len(self.selection_cache['Keep_files']) 
+        tossed = len(self.selection_cache['Toss_files'])
+        self.logger.info("Kept %0.1f%% of traces.", (kept/(kept+tossed))*100)
+        
     def ParseClick(self):
         if not hasattr(self, 'selection_cache'):
             self.logger.error("No files selected.")
@@ -277,7 +320,8 @@ class BJParserFrame(tk.Frame):
         if not self.outdir:
             self.outdir = os.path.join(self.indir, 'parsed')
         self.checkOptions()
-        self.child_threads.append({'thread':threading.Thread(target=self.BackgroundParseFiles)})
+        self.child_threads.append({'thread':threading.Thread(target=self.BackgroundParseFiles),
+                                    'widgets':[self.ButtonGuess]})
         self.child_threads[-1]['thread'].name = 'IVS File parser'
         self.child_threads[-1]['thread'].start()
         
@@ -289,6 +333,7 @@ class BJParserFrame(tk.Frame):
                 return
             fn = os.path.join(self.indir, _fn)
             self.ivs_files.AddFile(fn)
+        self.all_files_parsed = True
         self.logger.info("Background IVS file parsing complete.")         
            
     def updateKeepFileListBox(self):
