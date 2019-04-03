@@ -47,8 +47,7 @@ class GHistogram:
         try:
             #TODO Why not offer density plots as an option?
             freq, bins = np.histogram(G, range=Grange, bins=nbins, density=True)
-            self.histogram['freq'] = freq
-            self.histogram['bins'] = bins
+
         except ValueError as msg:
             #TODO we can now split out the file name with the bad data in it!
             self.logger.warning("Encountered this error while constructing histogram: %s", str(msg), exc_info=False)
@@ -63,6 +62,8 @@ class GHistogram:
 
         p0 = [1., Gm, Gs]
         bin_centers = (bins[:-1] + bins[1:])/2
+        self.histogram['freq'] = freq
+        self.histogram['bins'] = bin_centers
         coeff = p0
         covar = None
         hist_fit = np.array([x*0 for x in range(0, len(bin_centers))])
@@ -82,16 +83,16 @@ class GHistogram:
         
         #if covar != None:
         #    self.logger.debug('Covariance: %s ' % (np.sqrt(np.diag(covar))) )
-        if len(bins) > len(freq):
-            while len(bins) > len(freq):
-                bins = bins[:-1]
-        if len(freq) > len(bins):
-            while len(freq) > len(bins):
-                freq = freq[:-1]            
+#        if len(bins) > len(freq):
+#            while len(bins) > len(freq):
+#                bins = bins[:-1]
+#        if len(freq) > len(bins):
+#            while len(freq) > len(bins):
+#                freq = freq[:-1]            
         skewstat, skewpval = skewtest(freq)
         kurtstat, kurtpval = kurtosistest(freq)
-        self.fits = {"bin_centers":bin_centers, "bins":bins, "freq":freq, "mean":coeff[1], "std":coeff[2], \
-                "var":coeff[2], "bins":bins, "fit":hist_fit, "Gmean":Gm, "Gstd":Gs,\
+        self.fits = {"bins":bin_centers, "bin_edges":bins, "freq":freq, "mean":coeff[1], "std":coeff[2], \
+                "var":coeff[2], "fit":hist_fit, "Gmean":Gm, "Gstd":Gs,\
                 "skew":skew(freq), "kurtosis":kurtosis(freq), "skewstat":skewstat, "skewpval":skewpval,
                 "kurtstat":kurtstat, "kurtpval":kurtpval}
         self.logger.debug("%s thread run loop done", self.name)

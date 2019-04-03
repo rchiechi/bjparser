@@ -350,7 +350,7 @@ class BJParserFrame(tk.Frame):
 
     def WaitForThreads(self):
         if len(self.child_threads):
-            print("THREAD RUNNING")
+#            print("THREAD RUNNING")
             c = self.child_threads.pop()
             if c['thread'].is_alive():
                 if 'widgets' in c:
@@ -377,53 +377,17 @@ class BJParserFrame(tk.Frame):
             X += self.ivs_files[fn]['I']
         self.logger.info("Done!")
         self.handler.flush()
-        hist = GHistogram(self.logger, X)
-        self.DisplayHistogramData('Keep', self.KeepPlotCanvas, hist)
-#        with MASTER_LOCK:
-#            hist = {'thread':GHistogram(self.logger, X)}
-#            hist['after'] = (self.DisplayHistogramData, 
-#                ['Keep', self.KeepPlotCanvas, hist['thread']])
-#            hist['widget'] = self.ButtonParse
-#            self.child_threads.append(hist)
-#            self.child_threads[-1]['thread'].start()
-                
-#    def Parse(self):
-##        for c in self.child_threads:
-##            if c.is_alive():
-##                
-#            
-#
-#        X = []
-#
-#        for _fn in self.selection_cache['Keep_files']:
-#            fn = os.path.join(self.indir, _fn)
-#            self.ivs_files.AddFile(fn)    
-#            X += self.ivs_files[fn]['I']
-#        self.logger.info("Done!")
-#        self.handler.flush()
-##        busy = BusyWidget(self.KeepPlotCanvas)
-##        busy.Busy()
-#        hist = {'thread':GHistogram(self.logger, X)}
-#        hist['after'] = (self.DisplayHistogramData, 
-#            ['Keep', self.KeepPlotCanvas, hist['thread']])
-#        hist['widget'] = self.ButtonParse
-#        self.child_threads.append(hist)
-#        
-##        hist = threading.Thread(target=time.sleep, args=(5,))
-#        self.child_threads[-1]['thread'].start()
-##        self.child_threads[-1]['thread'].run()
-#        
-#
-##        busy.Free()
-##        self.DisplayHistogramData('Keep', self.KeepPlotCanvas, hist)
-##        self.handler.flush()
+        Ghist = GHistogram(self.logger, X)
+        self.DisplayHistogramData('Keep', self.KeepPlotCanvas, Ghist)
+        Ghistwriter(self.logger, self.outdir, Ghist)
+
 
     def DisplayHistogramData(self, label, master, hist):
         
         labels={'title':'G Histogram',
                 'X': 'G/G0',
                 'Y': 'Frequency'}
-        plotter = Histplot(hist.fits['bin_centers'], 
+        plotter = Histplot(hist.fits['bins'], 
                            hist.fits['freq'],
                            hist.fits['fit'],
                            labels)

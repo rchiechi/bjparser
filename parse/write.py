@@ -10,7 +10,7 @@ import os
 import csv
 
 
-csv.register_dialect('Ghist', delimiter='\t', quoting=csv.QUOTE_MINIMAL)
+csv.register_dialect('GHist', delimiter='\t', quoting=csv.QUOTE_MINIMAL)
 
 
 
@@ -25,8 +25,8 @@ def Ghistwriter(logger, outdir, Ghist):
         writer = csv.writer(csvfile, dialect='GHist')
         headers = ["G/G0", "Frequency"]
         writer.writerow(headers)
-        for i in len(0, Ghist.histogram['bins']):
-            writer.writerow(["%0.4f"%Ghist.histogram['bins'][i],
+        for i in range(0, len(Ghist.histogram['bins'])):
+            writer.writerow(["%0.16f"%Ghist.histogram['bins'][i],
                              "%0.4f"%Ghist.histogram['freq'][i]])
 
 #            self.fits = {"bin_centers":bin_centers, "bins":bins, "freq":freq, "mean":coeff[1], "std":coeff[2], \
