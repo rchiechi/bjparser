@@ -11,7 +11,7 @@ import logging
 import platform
 import threading
 import numpy as np
-from queue import Queue
+import queue
 import time
 import tkinter as tk
 from tkinter import ttk
@@ -30,7 +30,8 @@ from parse.read import ReadIVS
 from plot.canvasplotter import XYplot, XYZplot, Histplot
 from parse.GHistogram import GHistogram
 from parse.write import Ghistwriter
-from parse.Guess import CountPlateaux
+#from parse.Guess import CountPlateaux
+from parse.Guess import CountThread
 #from gui.BusyWidget import BusyWidget
 #import matplotlib.pyplot as plt
 #import matplotlib.backends.tkagg as tkagg
@@ -252,22 +253,48 @@ class BJParserFrame(tk.Frame):
         
     def doGuess(self):
         self.logger.info("Starting search for plateaux...")
-        _keep = self.selection_cache['Keep_files']
-        _toss = self.selection_cache['Toss_files']
-        tokeep = []
-        for fn in _keep:
-            if not self.alive.is_set():
-                break
+#        _keep = self.selection_cache['Keep_files']
+#        _toss = self.selection_cache['Toss_files']
+        guessQ = queue.Queue()
+        for fn in self.selection_cache['Keep_files']:
             _fn = os.path.join(self.indir, fn)
-            n = CountPlateaux(self.ivs_files[_fn]['d'],
-                             self.ivs_files[_fn]['I'])
-            if n < 10:
-                _toss.append(fn)
-            else:
-                tokeep.append(fn)
-                self.logger.info("Keeping %s traces", len(tokeep))
+            guessQ.put((fn, self.ivs_files[_fn]['d'], self.ivs_files[_fn]['I']))
+            
+        children = []
+        for i in range(0,8):
+            children.append(CountThread(self.alive, guessQ))
+            children[-1].start()
+        
+        kept = 0
+        last_kept = kept
+        while not guessQ.empty():
+            last_kept = kept
+            kept = 0
+            for c in children:
+                kept += len(c.keep)
+            if kept != last_kept:
+                self.logger.info("Keeping %s traces", kept)
+        _keep = []
+        _toss = []
+        for c in children:
+            _keep += c.keep
+            _toss += c.toss
+#        tokeep = []
+#        for fn in _keep:
+#            if not self.alive.is_set():
+#                break
+#            _fn = os.path.join(self.indir, fn)
+#            n = CountPlateaux(self.ivs_files[_fn]['d'],
+#                             self.ivs_files[_fn]['I'])
+#            if n < 10:
+#                _toss.append(fn)
+#            else:
+#                tokeep.append(fn)
+#                self.logger.info("Keeping %s traces", len(tokeep))
+        _keep.sort()
+        _toss.sort()
         self.logger.info("Search for plateaux done.")
-        self.selection_cache['Keep_files'] = tokeep
+        self.selection_cache['Keep_files'] = _keep
         self.selection_cache['Toss_files'] = _toss             
         self.__updateFileListBox('Toss')
         self.__updateFileListBox('Keep')
