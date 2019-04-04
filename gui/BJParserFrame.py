@@ -279,18 +279,6 @@ class BJParserFrame(tk.Frame):
         for c in children:
             _keep += c.keep
             _toss += c.toss
-#        tokeep = []
-#        for fn in _keep:
-#            if not self.alive.is_set():
-#                break
-#            _fn = os.path.join(self.indir, fn)
-#            n = CountPlateaux(self.ivs_files[_fn]['d'],
-#                             self.ivs_files[_fn]['I'])
-#            if n < 10:
-#                _toss.append(fn)
-#            else:
-#                tokeep.append(fn)
-#                self.logger.info("Keeping %s traces", len(tokeep))
         _keep.sort()
         _toss.sort()
         self.logger.info("Search for plateaux done.")
@@ -357,7 +345,6 @@ class BJParserFrame(tk.Frame):
         
     def BackgroundParseFiles(self): 
         self.logger.info("Background IVS file parsing started.")
-        print("BACKGROUND PARSER")
         for _fn in self.selection_cache['Keep_files']:
             if not self.alive.is_set():
                 return

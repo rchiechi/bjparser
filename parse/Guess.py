@@ -33,8 +33,7 @@ import queue
 #    print("Try pip3 install <module>")
 #    sys.exit()
 #
-#FN="/Volumes/Data/rchiechi/Desktop/STMBJ/TEST/PA027.ivs"
-#FN="/Volumes/Data/rchiechi/Desktop/STMBJ/TEST/PA005.ivs"
+
 
 class CountThread(threading.Thread):
     def __init__(self, alive, queue):
