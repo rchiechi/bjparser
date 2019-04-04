@@ -85,14 +85,15 @@ class Histplot:
             _y = Y.reshape(-1,newlen)
             X = _x.reshape(-1,newlen).mean(axis=1)
             Y = _y.reshape(-1,newlen).mean(axis=1)
+            
+        Y = np.log10(Y)
         fig = mpl.figure.Figure(figsize=(5, 3.5), dpi=80)
-        
         ax = fig.add_subplot(111)
 #        ax.plot(X, Y_fit, lw=2.0, color='b', label='Fit')
         ax.bar(X, Y, width=0.000005, align='center', color='r')
 
         ax.set_xlabel(labels['X'])
-        ax.set_ylabel(labels['Y'])
+        ax.set_ylabel('Log '+labels['Y'])
 
         fig.suptitle(labels['title'])            
         self.figure_canvas_agg = FigureCanvasAgg(fig)
@@ -104,7 +105,7 @@ class Histplot:
         # Unfortunately, there's no accessor for the pointer to the native renderer
         self.fig_photo = fig_photo
         tkagg.blit(self.fig_photo, self.figure_canvas_agg.get_renderer()._renderer, colormode=2)
-            
+        plt.show()
     
 #    def __init__(self, G, lables={}):
 #        if not lables:
@@ -120,7 +121,7 @@ class Histplot:
 #        
 #    def show(self):
 #        plt.gca()
-        plt.show()
+        
 
 #        fig = plt.figure(figsize=(16,10))
 #        ax = fig.add_subplot(111)

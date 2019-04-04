@@ -31,8 +31,10 @@ class GHistogram:
 #        except ValueError as msg:
 #            self.logger.error("Error ranging data for histogram: %s" % str(msg))
 #            Grange = (0,0)
-        nbins = int(len(G) / 3)
-#        print("nbins: %s" % nbins)
+        nbins = int(len(G)/100)
+        if nbins > 5000:
+            nbins = 5000
+        print("nbins: %s" % nbins)
 #        nbins = 5000
         if len(G) < 10:
             self.logger.warn("Histogram with only %d points.", len(G))

@@ -44,8 +44,8 @@ class BJParserFrame(tk.Frame):
 
     indir=str()
     outdir=str()
-    Keep_selected_files = []
-    Toss_selected_files = []
+#    Keep_selected_files = []
+#    Toss_selected_files = []
     style = ttk.Style()
     child_threads = []
     all_files_parsed = False
@@ -114,7 +114,9 @@ class BJParserFrame(tk.Frame):
                {'name':'KeepFile','text':'Keep Files','side':tk.LEFT},
                {'name':'SpawnOutputDialog','text':'Choose Output Directory','side':tk.LEFT},
                {'name':'Guess','text':'Guess which plots to toss', 'side':tk.LEFT},
-               {'name':'Parse','text':'Parse!','side':tk.LEFT}
+               {'name':'Parse','text':'Parse!','side':tk.LEFT},
+               {'name':'Reset','text':'Reset','command':'Reset','side':tk.LEFT},
+
                ]
 
         for b in buttons:
@@ -192,16 +194,15 @@ class BJParserFrame(tk.Frame):
     def TossListBoxClick(self, event):
         self.__ListBoxClick('Toss')
 
-
     def __ListBoxClick(self, _prefix):
-        selected = [getattr(self, _prefix+'FileListBox').get(x) 
+        selected = [getattr(self, _prefix+'FileListBox').get(x).replace("_"," ") 
                 for x in getattr(self, _prefix+'FileListBox').curselection()]
-        if selected == getattr(self, _prefix+'_selected_files'):
-            self.logger.debug("%s file selection unchanged.", _prefix)
-            self.handler.flush()
-            return
+#        if selected == getattr(self, _prefix+'_selected_files'):
+#            self.logger.debug("%s file selection unchanged.", _prefix)
+#            self.handler.flush()
+#            return
 
-        setattr(self, _prefix+'_selected_files', selected)
+#        setattr(self, _prefix+'_selected_files', selected)
         if len(selected) == 1:
             self.DisplayDataFigure(_prefix, 
                                    getattr(self, _prefix+'PlotCanvas'), selected[-1])
@@ -275,8 +276,16 @@ class BJParserFrame(tk.Frame):
         self.child_threads[-1]['thread'].name = 'G-histogram parser'
         self.child_threads[-1]['thread'].start()
         #self.Parse()
-            
-    def SpawnInputDialogClick(self):
+    
+    def ResetClick(self):
+        self.logger.info("Killing background tasks")
+        self.alive.clear()
+        self.handler.flush()
+        time.sleep(3)
+        self.alive.set()      
+        self.SpawnInputDialogClick(True)
+    
+    def SpawnInputDialogClick(self, reset=False):
 
         self.checkOptions()
         self.indir = filedialog.askdirectory(title="Files to parse",  \
@@ -285,7 +294,12 @@ class BJParserFrame(tk.Frame):
             self.cache['last_input_path'] = self.indir
         else:
             return
-        
+        if reset:
+            try:
+                os.unlink(os.path.join(
+                self.indir, 'STMBJParse.cache'))
+            except IOError:
+                pass
         self.selection_cache = Cache(self.logger, os.path.join(
                 self.indir, 'STMBJParse.cache'))
         if not self.selection_cache['Keep_files']:
@@ -309,7 +323,8 @@ class BJParserFrame(tk.Frame):
             self.outdir = os.path.join(self.indir, 'parsed')
         self.checkOptions()
         self.child_threads.append({'thread':threading.Thread(target=self.BackgroundParseFiles),
-                                    'widgets':[self.ButtonGuess]})
+                                    'widgets':[self.ButtonGuess,
+                                               self.ButtonReset,]})
         self.child_threads[-1]['thread'].name = 'IVS File parser'
         self.child_threads[-1]['thread'].start()
         
@@ -350,6 +365,8 @@ class BJParserFrame(tk.Frame):
     def __updateFileListBox(self, _prefix):
             getattr(self, _prefix+'filelist').set(" ".join([x.replace(" ","_") 
                 for x in self.selection_cache[_prefix+'_files']]))
+#            getattr(self, _prefix+'filelist').set(" ".join([x.replace(" ","_") 
+#                for x in self.selection_cache[_prefix+'_files']]))
             if len(self.selection_cache[_prefix+'_files']) == 0:
                 setattr(self, _prefix+'fig_photo', None)
 
@@ -361,7 +378,7 @@ class BJParserFrame(tk.Frame):
   
     def __FileClick(self, _from, _to):      
         self.checkOptions()
-        selected = [getattr(self, _from+'FileListBox').get(x) 
+        selected = [getattr(self, _from+'FileListBox').get(x).replace("_"," ") 
                     for x in getattr(self, _from+'FileListBox').curselection()]
         if selected:
             idx = getattr(self, _from+'FileListBox').curselection()[0]
@@ -371,7 +388,7 @@ class BJParserFrame(tk.Frame):
         filelist = []
         for i in range(0, len(self.selection_cache[_from+'_files'])):
             for s in selected:
-                if self.selection_cache[_from+'_files'][i].replace(" ","_") == s:
+                if self.selection_cache[_from+'_files'][i] == s:
                     tomove.append(i)
         
         for i in range(0, len(self.selection_cache[_from+'_files'])):
