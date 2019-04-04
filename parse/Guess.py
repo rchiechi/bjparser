@@ -39,27 +39,32 @@ except ImportError as msg:
 
 def CountPlateaux(X, Y):
     n = 0
-    slope, intercept, r_value, p_value, std_err = stats.linregress(X, Y)
-    if abs(slope) < 0.1:
-        return n
-    
-    spl = interpolate.UnivariateSpline(
-        X, Y, k=5, s=0.1)
+#    slope, intercept, r_value, p_value, std_err = stats.linregress(X, Y)
+#    if abs(slope) < 0.1:
+#        return n
+    Yrange = abs(Y.max() - Y.min())
+#    spl = interpolate.UnivariateSpline(
+#        X, Y, k=5, s=X[-1]/100000)
 
-    x,y = [], []
-    i = 0
-    for _x in X:
-        x.append(_x)
-        y.append(spl(_x))
-        i += 1
-        if i < 5:
-            continue
-        slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-        i = 0
-        if not r_value:
-            continue
-        if r_value**2 < 0.9:
-            n += 1
-            x, y = [], []
+#    x,y = [], []
+#    i = 0
+#    for _x in X:
+#        x.append(_x)
+#        y.append(spl(_x))
+#        i += 1
+#        if i < 5:
+#            continue
+    for idx in range(1, len(Y)):
+        _diff = abs(Y[idx-1] - Y[idx])
+        if _diff:
+            if (_diff/Yrange)*100 > 10:
+                n += 1            
+#        slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+#        i = 0
+#        if not r_value:
+#            continue
+#        if r_value**2 < 0.9:
+##            n += 1
+#            x, y = [], []
     return n
 

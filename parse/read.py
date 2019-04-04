@@ -9,6 +9,7 @@ Created on Thu Mar 28 15:43:29 2019
 import sys
 try:
     import pandas as pd
+    import numpy as np
 
 except ImportError as msg:
     print("\n\t\t> > >%s < < <" % str(msg))
@@ -53,9 +54,9 @@ class ReadIVS:
                 lines = lines[2:-9]
                 lines = lines.split('\\t')
                 distanceData.append(float(lines[0]))
-                currentData.append(float(lines[1]))
+                currentData.append(float(lines[1])*(1e-9))
         with self.lock:
-            self.frames[fileName] = {'d':distanceData, 'I':currentData}
+            self.frames[fileName] = {'d':np.array(distanceData), 'I':np.array(currentData)}
         
     
     def __contains__(self, key):

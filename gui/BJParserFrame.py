@@ -10,8 +10,8 @@ import os
 import logging
 import platform
 import threading
-#import numpy as np
-#from queue import Queue
+import numpy as np
+from queue import Queue
 import time
 import tkinter as tk
 from tkinter import ttk
@@ -252,20 +252,23 @@ class BJParserFrame(tk.Frame):
         
     def doGuess(self):
         self.logger.info("Starting search for plateaux...")
+        _keep = self.selection_cache['Keep_files']
+        _toss = self.selection_cache['Toss_files']
         tokeep = []
-        for fn in self.selection_cache['Keep_files']:
+        for fn in _keep:
             if not self.alive.is_set():
                 break
             _fn = os.path.join(self.indir, fn)
             n = CountPlateaux(self.ivs_files[_fn]['d'],
                              self.ivs_files[_fn]['I'])
-            if n < 20:
-                self.selection_cache['Toss_files'].append(fn)
+            if n < 10:
+                _toss.append(fn)
             else:
                 tokeep.append(fn)
                 self.logger.info("Keeping %s traces", len(tokeep))
         self.logger.info("Search for plateaux done.")
-        self.selection_cache['Keep_files'] = tokeep            
+        self.selection_cache['Keep_files'] = tokeep
+        self.selection_cache['Toss_files'] = _toss             
         self.__updateFileListBox('Toss')
         self.__updateFileListBox('Keep')
         self.__ListBoxClick('Keep')
@@ -434,11 +437,11 @@ class BJParserFrame(tk.Frame):
     def Parse(self):
         self.logger.info("Reading file selection...")
         self.handler.flush()
-        X = []
+        X = np.array([])
         for _fn in self.selection_cache['Keep_files']:
             fn = os.path.join(self.indir, _fn)
             self.ivs_files.AddFile(fn)    
-            X += self.ivs_files[fn]['I']
+            X = np.append(X, self.ivs_files[fn]['I'])
         self.logger.info("Done!")
         self.handler.flush()
         Ghist = GHistogram(self.logger, X)

@@ -7,20 +7,14 @@ Created on Fri Mar 29 12:12:27 2019
 """
 
 from scipy.optimize import curve_fit
-#import scipy.interpolate 
 from scipy.stats import gmean,skew,skewtest,kurtosis,kurtosistest
-#import scipy.misc 
 import numpy as np
-#import threading
 
-#class GHistogram(threading.Thread):
 class GHistogram:
 
     
     def __init__(self, logger, currentData):
-#        threading.Thread.__init__(self)
-        self.name = 'G-histogram parser'
-#        self.alive = alive
+        self.name = 'G-histrogram parser'
         self.I = currentData
         self.logger = logger
         self.histogram = {'freq':[0], 'bins':[0]}
@@ -29,24 +23,22 @@ class GHistogram:
         
     def run(self):
         self.logger.debug("Starting %s thread", self.name)
-#        while self.alive.isSet():
-        G = np.array(self.I)*(1e-9)/0.1/0.0000775
-        try:
-            Grange = (G.min(),G.max())
-        except ValueError as msg:
-            self.logger.error("Error ranging data for histogram: %s" % str(msg))
-            Grange = (0,0)
-
-#            if yrange != (0,0):
-#                yrange = (Y.min()-1, Y.max()+1)
-#            nbins = 1000
-        nbins = int(len(G) / 100)
+        G = np.array(self.I)/0.1/0.0000775
+#        try:
+#            Grange = (G.min(),G.max())
+#        except ValueError as msg:
+#            self.logger.error("Error ranging data for histogram: %s" % str(msg))
+#            Grange = (0,0)
+        nbins = int(len(G) / 3)
+#        print("nbins: %s" % nbins)
+#        nbins = 5000
         if len(G) < 10:
             self.logger.warn("Histogram with only %d points.", len(G))
             nbins = 10
         try:
             #TODO Why not offer density plots as an option?
-            freq, bins = np.histogram(G, range=Grange, bins=nbins, density=True)
+#            freq, bins = np.histogram(G, range=Grange, bins=nbins, density=True)
+            freq, bins = np.histogram(G, bins=nbins, density=True)
 
         except ValueError as msg:
             #TODO we can now split out the file name with the bad data in it!
