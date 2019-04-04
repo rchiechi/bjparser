@@ -108,15 +108,15 @@ class BJParserFrame(tk.Frame):
     def __createButtons(self):
             
         buttons = [
-               {'name':'Quit','text':'QUIT','command':'Quit','side':tk.BOTTOM},
-               {'name':'SpawnInputDialog','text':'Add Input Files','side':tk.LEFT},
-               {'name':'TossFile','text':'Toss Files','side':tk.LEFT},
-               {'name':'KeepFile','text':'Keep Files','side':tk.LEFT},
-               {'name':'SpawnOutputDialog','text':'Choose Output Directory','side':tk.LEFT},
-               {'name':'Guess','text':'Guess which plots to toss', 'side':tk.LEFT},
-               {'name':'Parse','text':'Parse!','side':tk.LEFT},
-               {'name':'Reset','text':'Reset','command':'Reset','side':tk.LEFT},
-
+                {'name':'Quit','text':'QUIT','command':'Quit','side':tk.BOTTOM},
+                {'name':'Reset','text':'Reset','command':'Reset','side':tk.BOTTOM},
+                {'name':'SpawnInputDialog','text':'Input Directory','side':tk.LEFT},
+                {'name':'TossFile','text':'Toss','side':tk.LEFT},
+                {'name':'KeepFile','text':'Keep','side':tk.LEFT},
+                {'name':'ArchiveTossed','text':'Archive Tossed','side':tk.LEFT},
+                {'name':'SpawnOutputDialog','text':'Output Directory','side':tk.LEFT},
+                {'name':'Guess','text':'Guess Which Plots to Toss', 'side':tk.LEFT},
+                {'name':'Parse','text':'Parse!','side':tk.LEFT}
                ]
 
         for b in buttons:
@@ -324,7 +324,8 @@ class BJParserFrame(tk.Frame):
         self.checkOptions()
         self.child_threads.append({'thread':threading.Thread(target=self.BackgroundParseFiles),
                                     'widgets':[self.ButtonGuess,
-                                               self.ButtonReset,]})
+                                               self.ButtonReset,
+                                               self.ButtonArchiveTossed]})
         self.child_threads[-1]['thread'].name = 'IVS File parser'
         self.child_threads[-1]['thread'].start()
         
@@ -355,6 +356,24 @@ class BJParserFrame(tk.Frame):
                     tk.messagebox.showinfo("Complete", "%s completed." % c['thread'].name)
                     c['after'][0](*c['after'][1])               
         self.after('1000', self.WaitForThreads)
+        
+    def ArchiveTossedClick(self):
+        if not hasattr(self, 'selection_cache'):
+            return
+        if not len(self.selection_cache['Toss_files']):
+            self.logger.info("No files to toss.")
+            return
+        archive_dir = os.path.join(self.indir, 'TossedArchive')
+        if not os.path.exists(archive_dir):
+            os.mkdir(archive_dir)
+        while len(self.selection_cache['Toss_files']):
+            fn = self.selection_cache['Toss_files'].pop()
+            os.rename(os.path.join(self.indir, fn),
+                      os.path.join(archive_dir, fn))
+            self.logger.info("Archived %s", fn)
+            self.handler.flush()
+        self.__updateFileListBox('Toss')
+            
            
     def updateKeepFileListBox(self):
         self.__updateFileListBox('Keep')
