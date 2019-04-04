@@ -18,7 +18,7 @@ class GHistogram2d:
         self.I = currentData
         self.D = distanceData
         self.logger = logger
-        self.histogram = {'freq':[[0],[0]], 'bins':[[0],[0]]}
+        self.histogram = {'H':[[0],[0]], 'Dedges': [], 'Gedges':[]}
         self.fits = {}
         self.run()
         
@@ -46,6 +46,8 @@ class GHistogram2d:
             H = np.array([[0.],[0.]])
             Dedges = [0.]
             Gedges = [0.]
+            
+        self.histogram = {'H':H, 'Dedges': Dedges, 'Gedges':Gedges}
 
         self.logger.info("%s run loop done", self.name)
 

@@ -106,7 +106,57 @@ class Histplot:
         self.fig_photo = fig_photo
         tkagg.blit(self.fig_photo, self.figure_canvas_agg.get_renderer()._renderer, colormode=2)
         plt.show()
+
+class Histplot2d:
     
+    def __init__(self, X, Y, Y_fit, labels={}):
+        if not labels:
+            labels={'title':'Histogram',
+                    'X':'G',
+                    'Y':'counts'}
+            
+        # Large arrays kill matplotlib
+        if len(X)%2:
+            X = X[:-1]
+            Y = Y[:-1]
+        while len(X) > 10000:
+            newlen = int(len(X)/2)
+            _x = X.reshape(-1,newlen)
+            _y = Y.reshape(-1,newlen)
+            X = _x.reshape(-1,newlen).mean(axis=1)
+            Y = _y.reshape(-1,newlen).mean(axis=1)
+
+#>>> ax = fig.add_subplot(133, title='NonUniformImage: interpolated',
+#...         aspect='equal', xlim=xedges[[0, -1]], ylim=yedges[[0, -1]])
+#>>> im = NonUniformImage(ax, interpolation='bilinear')
+#>>> xcenters = (xedges[:-1] + xedges[1:]) / 2
+#>>> ycenters = (yedges[:-1] + yedges[1:]) / 2
+#>>> im.set_data(xcenters, ycenters, H)
+#>>> ax.images.append(im)
+#>>> plt.show()
+
+        Y = np.log10(Y)
+        fig = mpl.figure.Figure(figsize=(5, 3.5), dpi=80)
+        ax = fig.add_subplot(111)
+#        ax.plot(X, Y_fit, lw=2.0, color='b', label='Fit')
+        ax.bar(X, Y, width=0.000005, align='center', color='r')
+
+        ax.set_xlabel(labels['X'])
+        ax.set_ylabel('Log '+labels['Y'])
+
+        fig.suptitle(labels['title'])            
+        self.figure_canvas_agg = FigureCanvasAgg(fig)
+        self.figure_canvas_agg.draw()
+        figure_x, figure_y, figure_w, figure_h = fig.bbox.bounds
+        self.figure_w, self.figure_h = int(figure_w), int(figure_h)
+
+    def Draw(self, fig_photo):  
+        # Unfortunately, there's no accessor for the pointer to the native renderer
+        self.fig_photo = fig_photo
+        tkagg.blit(self.fig_photo, self.figure_canvas_agg.get_renderer()._renderer, colormode=2)
+        plt.show()
+
+
 #    def __init__(self, G, lables={}):
 #        if not lables:
 #            labels={'title':'Histogram',
