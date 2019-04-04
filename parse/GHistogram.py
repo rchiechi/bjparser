@@ -22,8 +22,10 @@ class GHistogram:
         self.run()
         
     def run(self):
-        self.logger.debug("Starting %s thread", self.name)
+        self.logger.info("Starting %s", self.name)
         G = np.array(self.I)/0.1/0.0000775
+        if G.any() < 0:
+            self.logger.warn("Dataset contains negative G-values!")
 #        try:
 #            Grange = (G.min(),G.max())
 #        except ValueError as msg:
@@ -87,7 +89,7 @@ class GHistogram:
                 "var":coeff[2], "fit":hist_fit, "Gmean":Gm, "Gstd":Gs,\
                 "skew":skew(freq), "kurtosis":kurtosis(freq), "skewstat":skewstat, "skewpval":skewpval,
                 "kurtstat":kurtstat, "kurtpval":kurtpval}
-        self.logger.debug("%s thread run loop done", self.name)
+        self.logger.info("%s run loop done", self.name)
 #            self.alive.clear()
             
 

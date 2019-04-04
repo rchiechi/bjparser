@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt # Without this there is not mpl.figure
 from mpl_toolkits.mplot3d import Axes3D # Needed for 3D plot axes types
 import matplotlib.backends.tkagg as tkagg
 from matplotlib.backends.backend_agg import FigureCanvasAgg
+import scipy.signal
 
 class XYplot:
     #https://matplotlib.org/gallery/user_interfaces/embedding_in_tk_canvas_sgskip.html
@@ -73,11 +74,22 @@ class Histplot:
             labels={'title':'Histogram',
                     'X':'G',
                     'Y':'counts'}
+            
+        # Large arrays kill matplotlib
+        if len(X)%2:
+            X = X[:-1]
+            Y = Y[:-1]
+        while len(X) > 10000:
+            newlen = int(len(X)/2)
+            _x = X.reshape(-1,newlen)
+            _y = Y.reshape(-1,newlen)
+            X = _x.reshape(-1,newlen).mean(axis=1)
+            Y = _y.reshape(-1,newlen).mean(axis=1)
         fig = mpl.figure.Figure(figsize=(5, 3.5), dpi=80)
         
         ax = fig.add_subplot(111)
-        ax.plot(X, Y_fit, lw=2.0, color='b', label='Fit')
-#        ax.bar(X, Y, width=0.1, color='r')
+#        ax.plot(X, Y_fit, lw=2.0, color='b', label='Fit')
+        ax.bar(X, Y, width=0.000005, align='center', color='r')
 
         ax.set_xlabel(labels['X'])
         ax.set_ylabel(labels['Y'])

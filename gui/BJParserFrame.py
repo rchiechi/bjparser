@@ -40,30 +40,6 @@ from parse.Guess import CountThread
 
 MASTER_LOCK = threading.RLock()
 
-class PlotThread(threading.Thread):
-    
-    def __init__(self, plotter, args):
-        threading.Thread.__init__(self)
-        self.plotter = plotter
-        self.args = args
-    def run(self):
-        with MASTER_LOCK:
-            self.plotter(*self.args)
-
-class WaitThread(threading.Thread):
-    
-    def __init__(self, logger, handler, alive, waiting_for):
-        threading.Thread.__init__(self)
-        self.logger = logger
-        self.alive = alive
-        self.handler = handler
-        self.waiting_for = waiting_for
-    def run(self):
-        while self.alive.isSet():
-            self.logger.info("Waiting for %s", self.waiting_for)
-            self.handler.flush()
-            time.sleep(5)
-
 class BJParserFrame(tk.Frame):
 
     indir=str()
@@ -213,10 +189,8 @@ class BJParserFrame(tk.Frame):
     def KeepListBoxClick(self, event):
         self.__ListBoxClick('Keep')
 
-
     def TossListBoxClick(self, event):
         self.__ListBoxClick('Toss')
-
 
 
     def __ListBoxClick(self, _prefix):
@@ -253,8 +227,6 @@ class BJParserFrame(tk.Frame):
         
     def doGuess(self):
         self.logger.info("Starting search for plateaux...")
-#        _keep = self.selection_cache['Keep_files']
-#        _toss = self.selection_cache['Toss_files']
         guessQ = queue.Queue()
         for fn in self.selection_cache['Keep_files']:
             _fn = os.path.join(self.indir, fn)
@@ -265,11 +237,9 @@ class BJParserFrame(tk.Frame):
             children.append(CountThread(self.alive, guessQ))
             children[-1].start()
         
-        kept = 0
-        last_kept = kept
         while not guessQ.empty():
-            last_kept = kept
             kept = 0
+            last_kept = kept
             for c in children:
                 kept += len(c.keep)
             if kept != last_kept:
@@ -352,6 +322,24 @@ class BJParserFrame(tk.Frame):
             self.ivs_files.AddFile(fn)
         self.all_files_parsed = True
         self.logger.info("Background IVS file parsing complete.")         
+        
+    def WaitForThreads(self):
+        if len(self.child_threads):
+#            print("THREAD RUNNING")
+            c = self.child_threads.pop()
+            if c['thread'].is_alive():
+                if 'widgets' in c:
+                    for w in c['widgets']:
+                        w['state'] = tk.DISABLED
+                self.child_threads.append(c)
+            else:
+                if 'widgets' in c:
+                    for w in c['widgets']:
+                        w['state'] = tk.NORMAL
+                if 'after' in c:
+                    tk.messagebox.showinfo("Complete", "%s completed." % c['thread'].name)
+                    c['after'][0](*c['after'][1])               
+        self.after('1000', self.WaitForThreads)
            
     def updateKeepFileListBox(self):
         self.__updateFileListBox('Keep')
@@ -429,30 +417,15 @@ class BJParserFrame(tk.Frame):
         self.handler.flush()
         self.FileListBoxFrameLabelVar.set("Output to: %s"% (self.outdir) )
 
-    def WaitForThreads(self):
-        if len(self.child_threads):
-#            print("THREAD RUNNING")
-            c = self.child_threads.pop()
-            if c['thread'].is_alive():
-                if 'widgets' in c:
-                    for w in c['widgets']:
-                        w['state'] = tk.DISABLED
-                self.child_threads.append(c)
-            else:
-                if 'widgets' in c:
-                    for w in c['widgets']:
-                        w['state'] = tk.NORMAL
-                if 'after' in c:
-                    tk.messagebox.showinfo("Complete", "%s completed." % c['thread'].name)
-                    c['after'][0](*c['after'][1])
-                
-        self.after('1000', self.WaitForThreads)
+
 
     def Parse(self):
         self.logger.info("Reading file selection...")
         self.handler.flush()
         X = np.array([])
         for _fn in self.selection_cache['Keep_files']:
+            if not self.alive.is_set():
+                break
             fn = os.path.join(self.indir, _fn)
             self.ivs_files.AddFile(fn)    
             X = np.append(X, self.ivs_files[fn]['I'])
@@ -479,27 +452,6 @@ class BJParserFrame(tk.Frame):
         getattr(self, label+'PlotCanvas').create_image(plotter.figure_w/2, 
                plotter.figure_h/2, image=plotter.fig_photo)
         setattr(self, label+'fig_photo', plotter)
-#        G = np.array(X)*(1e-9)/0.1/0.0000775
-        #alive = threading.Event()
-        #alive.set()
-#        self.child_threads.append(WaitThread(self.logger,
-#                                              self.handler,
-#                                              alive,
-#                                              'histogram parser'
-#                                              ))
-#        self.child_threads.append(PlotThread(Histplot,
-#                                      [X],
-#                                      ))
-#        self.child_threads[-1].start()
-#        while self.child_threads[-1].is_alive():
-#            self.logger.info("Waiting for histogram parser.")
-#            self.handler.flush()
-#            time.sleep(1)
-#        self.child_threads[-1].plotter.show()
-#        hist = Histplot(G)
-        #alive.clear()
-#        hist.show()
-        
 
     
     def DisplayDataFigure(self, label, master, _fn):
@@ -545,14 +497,6 @@ class BJParserFrame(tk.Frame):
                 'Z': 'current'}
         plotter = XYZplot(X, Y, labels)
         
-#        for i in range(0, len(X)):
-#            plotter.Add(X[i], Y[i], i)
-
-        
-#        plotter = XYZplot(X,                       
-#                          Y,
-#                          Z,
-#                         labels)
         plotter.Draw(tk.PhotoImage(master=master,
                                    width=plotter.figure_w,
                                    height=plotter.figure_h))
