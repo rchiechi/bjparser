@@ -10,6 +10,70 @@ from scipy.optimize import curve_fit
 from scipy.stats import gmean,skew,skewtest,kurtosis,kurtosistest
 import numpy as np
 
+class GHistogram2d:
+
+    
+    def __init__(self, logger, distanceData, currentData):
+        self.name = 'GD-histrogram parser'
+        self.I = currentData
+        self.D = distanceData
+        self.logger = logger
+        self.histogram = {'freq':[[0],[0]], 'bins':[[0],[0]]}
+        self.fits = {}
+        self.run()
+        
+    def run(self):
+        self.logger.info("Starting %s", self.name)
+        G = np.array(self.I)/0.1/0.0000775
+        D = np.array(self.D)
+        if G.any() < 0:
+            self.logger.warn("Dataset contains negative G-values!")
+        nbins = int(len(G)/100)
+        if nbins > 5000:
+            nbins = 5000
+        print("nbins: %s" % nbins)
+#        nbins = 5000
+        if len(G) < 10:
+            self.logger.warn("Histogram with only %d points.", len(G))
+            nbins = 10
+        try:
+
+            H, Dedges, Gedges = np.histogram2d(D, G, bins=nbins)
+        except ValueError as msg:
+            #TODO we can now split out the file name with the bad data in it!
+            self.logger.warning("Encountered this error while constructing histogram: %s", str(msg), exc_info=False)
+            H = np.array([[0.],[0.]])
+            Dedges = [0.]
+            Gedges = [0.]
+            
+        if len(G):  
+            Gm = signedgmean(G)
+            Gs = abs(G.std())
+        else:
+            Gm,Gs = 0.0,0.0
+
+        p0 = [1., Gm, Gs]
+        bin_centers = (bins[:-1] + bins[1:])/2
+        self.histogram['freq'] = freq
+        self.histogram['bins'] = bin_centers
+        coeff = p0
+        covar = None
+        hist_fit = np.array([x*0 for x in range(0, len(bin_centers))])
+        try:
+            coeff, covar = curve_fit(lorenz, bin_centers, freq, p0=p0, maxfev=1000)
+            hist_fit = lorenz(bin_centers, *coeff)
+
+        except RuntimeError as msg:              
+            self.logger.warning("Fit did not converge (%s)", str(msg), exc_info=False)
+        except ValueError as msg:
+            self.logger.warning("Skipping data with ridiculous numbers in it (%s)", str(msg), exc_info=False )
+            #coeff=p0
+
+        self.logger.info("%s run loop done", self.name)
+
+            
+
+
 class GHistogram:
 
     
