@@ -39,35 +39,13 @@ class GHistogram2d:
         try:
 
             H, Dedges, Gedges = np.histogram2d(D, G, bins=nbins)
+            H = H.T  # Let each row list bins with common y range.
         except ValueError as msg:
             #TODO we can now split out the file name with the bad data in it!
             self.logger.warning("Encountered this error while constructing histogram: %s", str(msg), exc_info=False)
             H = np.array([[0.],[0.]])
             Dedges = [0.]
             Gedges = [0.]
-            
-        if len(G):  
-            Gm = signedgmean(G)
-            Gs = abs(G.std())
-        else:
-            Gm,Gs = 0.0,0.0
-
-        p0 = [1., Gm, Gs]
-        bin_centers = (bins[:-1] + bins[1:])/2
-        self.histogram['freq'] = freq
-        self.histogram['bins'] = bin_centers
-        coeff = p0
-        covar = None
-        hist_fit = np.array([x*0 for x in range(0, len(bin_centers))])
-        try:
-            coeff, covar = curve_fit(lorenz, bin_centers, freq, p0=p0, maxfev=1000)
-            hist_fit = lorenz(bin_centers, *coeff)
-
-        except RuntimeError as msg:              
-            self.logger.warning("Fit did not converge (%s)", str(msg), exc_info=False)
-        except ValueError as msg:
-            self.logger.warning("Skipping data with ridiculous numbers in it (%s)", str(msg), exc_info=False )
-            #coeff=p0
 
         self.logger.info("%s run loop done", self.name)
 
