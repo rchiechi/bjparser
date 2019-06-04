@@ -11,13 +11,15 @@ import os
 import time
 import json
 
-CACHEFILE = os.path.join(os.path.expanduser('~'), ".cache/STMBJParse.cache")
+CACHEDIR = os.path.join(os.path.expanduser('~'), ".cache")
 
 class Cache():
     
-    def __init__(self, logger, cache_file=CACHEFILE):
+    def __init__(self, logger, cache_dir=CACHEDIR):
         self.logger = logger
-        self.cache_file = cache_file
+        self.cache_file = os.path.join(cache_dir, "STMBJParse.cache")
+        if not os.path.exists(cache_dir):
+            os.mkdir(cache_dir)
         self.__read_cache()
         if 'time_stamp' not in self.cache:
             self.cache['time_stamp'] = time.time()
