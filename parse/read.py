@@ -79,7 +79,10 @@ class ReadIVS:
         self.TossFile(fn)
 
     def KeepFile(self, fn):
-        self.__readfile(fn)
+        if self.opts.altparser:
+            self.__read_file_as_df(fn)
+        else:
+            self.__readfile(fn)
         
     def TossFile(self, fn):
         with self.lock:

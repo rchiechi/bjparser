@@ -16,6 +16,8 @@ desc='''
 parser = argparse.ArgumentParser(description=desc,formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-L','--loglevel', default='info', choices=('info','warn','error','debug'),
                     help="Set the logging level.")
+parser.add_argument('--altparser', default=False, action='store_true',
+                    help="Use pandas to parse input files instead if IVS-specific parser.")
 parser.add_argument('-e', '--extension', default='ivs',
                     help="Extension of input files to parse.")
 
