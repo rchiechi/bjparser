@@ -206,7 +206,7 @@ class BJParserFrame(tk.Frame):
                                    self.sidemap[_prefix], selected)
     
         getattr(self, _prefix+'FileListBox').focus_set()
-
+        #TODO: matplotlib figure canvas steals focus preventing up/down arrow keys from working with FileListBox
         
     def GuessClick(self):
         if not hasattr(self, 'selection_cache'):
