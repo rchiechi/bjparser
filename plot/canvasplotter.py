@@ -6,186 +6,129 @@ Created on Fri Mar 29 08:52:13 2019
 @author: rchiechi
 """
 
-__all__ = ['XYplot']
-
+# import matplotlib.pyplot as plt # Without this there is not mpl.figure
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg, NavigationToolbar2Tk)
+# from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.backend_bases import key_press_handler
+# from mpl_toolkits.mplot3d import Axes3D # Needed for 3D plot axes types
+# import scipy.signal
 import numpy as np
 import matplotlib as mpl
 mpl.use('TkAgg')
-import matplotlib.pyplot as plt # Without this there is not mpl.figure
-from mpl_toolkits.mplot3d import Axes3D # Needed for 3D plot axes types
-import matplotlib.backends.tkagg as tkagg
-from matplotlib.backends.backend_agg import FigureCanvasAgg
-import scipy.signal
 
-class XYplot:
-    #https://matplotlib.org/gallery/user_interfaces/embedding_in_tk_canvas_sgskip.html
-    def __init__(self, X ,Y, labels={}):
-        if not labels:
-            labels={'title':'XY Plot',
-                    'X': 'distance',
-                    'Y': 'current'}
-        fig = mpl.figure.Figure(figsize=(5, 3.5), dpi=80)
-        ax = fig.add_subplot(111)
-        ax.plot(X,Y)
-        ax.set_xlabel(labels['X'])
-        ax.set_ylabel(labels['Y'])
-        fig.suptitle(labels['title'])
-        self.figure_canvas_agg = FigureCanvasAgg(fig)
-        self.figure_canvas_agg.draw()
-        figure_x, figure_y, figure_w, figure_h = fig.bbox.bounds
-        self.figure_w, self.figure_h = int(figure_w), int(figure_h)
-    def Draw(self, fig_photo):  
-        # Unfortunately, there's no accessor for the pointer to the native renderer
-        self.fig_photo = fig_photo
-        tkagg.blit(self.fig_photo, self.figure_canvas_agg.get_renderer()._renderer, colormode=2)
+for _key in ('up', 'down', 'left', 'right'):
+    try:
+        mpl.rcParams['keymap.back'].remove(_key)
+    except ValueError:
+        pass
+
+__all__ = ['getXYplot', 'getHistplot']
+
+class FigureCanvas(FigureCanvasTkAgg):
+    def destroy(self):
+        self.get_tk_widget().destroy()
+
+class NavigationToolbar(NavigationToolbar2Tk):
+    # only display the buttons we need
+    toolitems = [t for t in NavigationToolbar2Tk.toolitems if
+                 t[0] in ('Home', 'Pan', 'Zoom')]
+    # def key_press_handler(self, event, canvas=None, toolbar=None):
+    #     pass
+
+def _getcanvas(fig, canvas_master, toolbar_master):
+    canvas = FigureCanvas(fig, canvas_master)  # A tk.DrawingArea.
+    canvas.draw()
+    toolbar = NavigationToolbar(canvas, toolbar_master, pack_toolbar=False)
+    toolbar.update()
+    return canvas, toolbar
+
+def getXYplot(canvas_master, toolbar_master, X ,Y, labels=None):
+    #https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_tk_sgskip.html
+    if labels is None:
+        labels={'title':'XY Plot',
+                'X': 'distance',
+                'Y': 'current'}
+    fig = mpl.figure.Figure(figsize=(5, 3.5), dpi=80)
+    ax = fig.add_subplot(111)
+    ax.plot(X,Y)
+    ax.set_xlabel(labels['X'])
+    ax.set_ylabel(labels['Y'])
+    fig.suptitle(labels['title'])
+    return _getcanvas(fig, canvas_master, toolbar_master)
 
     
-class XYZplot:
-    #https://matplotlib.org/gallery/user_interfaces/embedding_in_tk_canvas_sgskip.html
-    def __init__(self, X, Y, labels={}):
-        if not labels:
-            labels={'title':'XYZ Plot',
-                    'X': 'distance',
-                    'Y': 'current',
-                    'Z': 'trace'}
-        fig = mpl.figure.Figure(figsize=(5, 3.5), dpi=80)
-        
-        ax = fig.add_subplot(111, projection='3d')
-        ax.set_xlabel(labels['X'])
-        ax.set_ylabel(labels['Y'])
-        ax.set_zlabel(labels['Z'])
-        for i in range(0, len(X)):
-            ax.plot(X[i], Y[i], i, zdir='y')
-        fig.suptitle(labels['title'])            
-        self.figure_canvas_agg = FigureCanvasAgg(fig)
-        self.figure_canvas_agg.draw()
-        figure_x, figure_y, figure_w, figure_h = fig.bbox.bounds
-        self.figure_w, self.figure_h = int(figure_w), int(figure_h)
-
-    def Draw(self, fig_photo):  
-        # Unfortunately, there's no accessor for the pointer to the native renderer
-        self.fig_photo = fig_photo
-        tkagg.blit(self.fig_photo, self.figure_canvas_agg.get_renderer()._renderer, colormode=2)
-        
-class Histplot:
+def getXYZplot(canvas_master, toolbar_master, X, Y, labels=None):
+    if labels is None:
+        labels={'title':'XYZ Plot',
+                'X': 'distance',
+                'Y': 'current',
+                'Z': 'trace'}
+    fig = mpl.figure.Figure(figsize=(5, 3.5), dpi=80)
     
-    def __init__(self, X, Y, Y_fit, labels={}):
-        if not labels:
-            labels={'title':'Histogram',
-                    'X':'G',
-                    'Y':'counts'}
-            
-        # Large arrays kill matplotlib
-        if len(X)%2:
-            X = X[:-1]
-            Y = Y[:-1]
-        while len(X) > 10000:
-            newlen = int(len(X)/2)
-            _x = X.reshape(-1,newlen)
-            _y = Y.reshape(-1,newlen)
-            X = _x.reshape(-1,newlen).mean(axis=1)
-            Y = _y.reshape(-1,newlen).mean(axis=1)
-            
-        Y = np.log10(Y)
-        fig = mpl.figure.Figure(figsize=(5, 3.5), dpi=80)
-        ax = fig.add_subplot(111)
-#        ax.plot(X, Y_fit, lw=2.0, color='b', label='Fit')
-        ax.bar(X, Y, width=0.000005, align='center', color='r')
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_xlabel(labels['X'])
+    ax.set_ylabel(labels['Y'])
+    ax.set_zlabel(labels['Z'])
+    for i, _x in enumerate(X):
+        ax.plot(_x, Y[i], i, zdir='y')
+    fig.suptitle(labels['title'])            
 
-        ax.set_xlabel(labels['X'])
-        ax.set_ylabel('Log '+labels['Y'])
-
-        fig.suptitle(labels['title'])            
-        self.figure_canvas_agg = FigureCanvasAgg(fig)
-        self.figure_canvas_agg.draw()
-        figure_x, figure_y, figure_w, figure_h = fig.bbox.bounds
-        self.figure_w, self.figure_h = int(figure_w), int(figure_h)
-
-    def Draw(self, fig_photo):  
-        # Unfortunately, there's no accessor for the pointer to the native renderer
-        self.fig_photo = fig_photo
-        tkagg.blit(self.fig_photo, self.figure_canvas_agg.get_renderer()._renderer, colormode=2)
-        plt.show()
-
-class Histplot2d:
-    
-    def __init__(self, X, Y, Y_fit, labels={}):
-        if not labels:
-            labels={'title':'Histogram',
-                    'X':'G',
-                    'Y':'counts'}
-            
-        # Large arrays kill matplotlib
-        if len(X)%2:
-            X = X[:-1]
-            Y = Y[:-1]
-        while len(X) > 10000:
-            newlen = int(len(X)/2)
-            _x = X.reshape(-1,newlen)
-            _y = Y.reshape(-1,newlen)
-            X = _x.reshape(-1,newlen).mean(axis=1)
-            Y = _y.reshape(-1,newlen).mean(axis=1)
-
-#>>> ax = fig.add_subplot(133, title='NonUniformImage: interpolated',
-#...         aspect='equal', xlim=xedges[[0, -1]], ylim=yedges[[0, -1]])
-#>>> im = NonUniformImage(ax, interpolation='bilinear')
-#>>> xcenters = (xedges[:-1] + xedges[1:]) / 2
-#>>> ycenters = (yedges[:-1] + yedges[1:]) / 2
-#>>> im.set_data(xcenters, ycenters, H)
-#>>> ax.images.append(im)
-#>>> plt.show()
-
-        Y = np.log10(Y)
-        fig = mpl.figure.Figure(figsize=(5, 3.5), dpi=80)
-        ax = fig.add_subplot(111)
-#        ax.plot(X, Y_fit, lw=2.0, color='b', label='Fit')
-        ax.bar(X, Y, width=0.000005, align='center', color='r')
-
-        ax.set_xlabel(labels['X'])
-        ax.set_ylabel('Log '+labels['Y'])
-
-        fig.suptitle(labels['title'])            
-        self.figure_canvas_agg = FigureCanvasAgg(fig)
-        self.figure_canvas_agg.draw()
-        figure_x, figure_y, figure_w, figure_h = fig.bbox.bounds
-        self.figure_w, self.figure_h = int(figure_w), int(figure_h)
-
-    def Draw(self, fig_photo):  
-        # Unfortunately, there's no accessor for the pointer to the native renderer
-        self.fig_photo = fig_photo
-        tkagg.blit(self.fig_photo, self.figure_canvas_agg.get_renderer()._renderer, colormode=2)
-        plt.show()
-
-
-#    def __init__(self, G, lables={}):
-#        if not lables:
-#            labels={'title':'Histogram',
-#                    'X':'G',
-#                    'Y':'counts'}
-#        
-#        #X = X/G = [i*(1e-9)/0.1/0.0000775 for i in current]
-#        n, bins, patches = plt.hist(G, 100, density=True, facecolor='g', alpha=0.75)
-#        plt.xlabel(labels['X'], fontsize=14)
-#        plt.ylabel(labels['Y'], fontsize=14)
-#        plt.title(labels['title'])
-#        
-#    def show(self):
-#        plt.gca()
+    return _getcanvas(fig, canvas_master, toolbar_master)
         
+def getHistplot(canvas_master, toolbar_master, X, Y, Y_fit, labels=None): #pylint: disable=unused-argument
+    if labels is None:
+        labels={'title':'Histogram',
+                'X':'G',
+                'Y':'counts'}
+        
+    # Large arrays kill matplotlib
+    if len(X)%2:
+        X = X[:-1]
+        Y = Y[:-1]
+    while len(X) > 10000:
+        newlen = int(len(X)/2)
+        _x = X.reshape(-1,newlen)
+        _y = Y.reshape(-1,newlen)
+        X = _x.reshape(-1,newlen).mean(axis=1)
+        Y = _y.reshape(-1,newlen).mean(axis=1)
+        
+    Y = np.log10(Y)
+    fig = mpl.figure.Figure(figsize=(5, 3.5), dpi=80)
+    ax = fig.add_subplot(111)
+    ax.bar(X, Y, width=0.000005, align='center', color='r')
+    ax.set_xlabel(labels['X'])
+    ax.set_ylabel('Log '+labels['Y'])
+    fig.suptitle(labels['title'])            
+    return _getcanvas(fig, canvas_master, toolbar_master)
 
-#        fig = plt.figure(figsize=(16,10))
-#        ax = fig.add_subplot(111)
-# the histogram of the data
-#n, bins, patches = plt.hist(x, 50, density=True, facecolor='g', alpha=0.75)
-#
-#
-#plt.xlabel('Smarts')
-#plt.ylabel('Probability')
-#plt.title('Histogram of IQ')
-#plt.text(60, .025, r'$\mu=100,\ \sigma=15$')
-#plt.axis([40, 160, 0, 0.03])
-#plt.grid(True)
-#plt.show()
-            
+
+
+
+def getHistplot2d(canvas_master, toolbar_master, X, Y, Y_fit, labels=None): #pylint: disable=unused-argument
+    if labels is None:
+        labels={'title':'Histogram',
+                'X':'G',
+                'Y':'counts'}
+        
+    # Large arrays kill matplotlib
+    if len(X)%2:
+        X = X[:-1]
+        Y = Y[:-1]
+    while len(X) > 10000:
+        newlen = int(len(X)/2)
+        _x = X.reshape(-1,newlen)
+        _y = Y.reshape(-1,newlen)
+        X = _x.reshape(-1,newlen).mean(axis=1)
+        Y = _y.reshape(-1,newlen).mean(axis=1)
+
+    Y = np.log10(Y)
+    fig = mpl.figure.Figure(figsize=(5, 3.5), dpi=80)
+    ax = fig.add_subplot(111)
+    ax.bar(X, Y, width=0.000005, align='center', color='r')
+    ax.set_xlabel(labels['X'])
+    ax.set_ylabel('Log '+labels['Y'])
+    fig.suptitle(labels['title'])       
+    return _getcanvas(fig, canvas_master, toolbar_master)
             
         

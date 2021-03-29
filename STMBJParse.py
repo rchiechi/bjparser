@@ -13,7 +13,8 @@ desc='''
 	TBD.
      '''
 
-parser = argparse.ArgumentParser(description=desc,formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser = argparse.ArgumentParser(
+     description=desc,formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-L','--loglevel', default='info', choices=('info','warn','error','debug'),
                     help="Set the logging level.")
 parser.add_argument('--altparser', default=False, action='store_true',

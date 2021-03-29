@@ -6,53 +6,44 @@ Created on Wed Mar 27 13:18:21 2019
 @author: rchiechi
 """
 import os
-#import sys
 import logging
 import platform
 import threading
-import numpy as np
 import queue
 import time
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font
 from tkinter import filedialog
-#import matplotlib as mpl
-#mpl.use('TkAgg')
-#import matplotlib.pyplot as plt
-#import matplotlib.backends.tkagg as tkagg
-#from matplotlib.backends.backend_agg import FigureCanvasAgg
+import numpy as np
+from plot.canvasplotter import getXYplot, getXYZplot, getHistplot
 import gui.colors as cl
-#import gui.tooltip as tip
 from util.Cache import Cache
 from util.logger import GUIHandler
 from parse.read import ReadIVS
-from plot.canvasplotter import XYplot, XYZplot, Histplot
 from parse.GHistogram import GHistogram
 from parse.write import Ghistwriter
-#from parse.Guess import CountPlateaux
 from parse.Guess import CountThread
-#from gui.BusyWidget import BusyWidget
-#import matplotlib.pyplot as plt
-#import matplotlib.backends.tkagg as tkagg
 
 
 
 MASTER_LOCK = threading.RLock()
 
-class BJParserFrame(tk.Frame):
+#pylint: disable = attribute-defined-outside-init
 
+class BJParserFrame(tk.Frame):
+    '''
+    A TK Frame to hold the file list and plotting canvases for
+    selecting and visualizing data from an STMBJ experiment
+    '''
     indir=str()
     outdir=str()
-#    Keep_selected_files = []
-#    Toss_selected_files = []
     style = ttk.Style()
     child_threads = []
     all_files_parsed = False
-
-
     boolmap = {1:True, 0:False}
-    
+    sidemap = {'Keep': tk.LEFT, 'Toss': tk.RIGHT}
+
     def __init__(self, opts, master=None):
         tk.Frame.__init__(self, master)
         self.opts = opts
@@ -68,21 +59,22 @@ class BJParserFrame(tk.Frame):
         self.cache = Cache(self.logger)
         self.ivs_files = ReadIVS(self.logger, MASTER_LOCK, self.opts)
         self.checkOptions()
-        self.ToFront()     
+        self.ToFront()
         self.after('1000', self.WaitForThreads)
         self.mainloop()
 
 
     def __createWidgets(self):
         self.update()
-        
+
         self.ButtonFrame = ttk.Frame(self)
         self.LoggingFrame = ttk.Frame(self)
         self.FileListBoxFrame = ttk.Frame(self)
         self.CanvasFrame = ttk.Frame(self)
+        self.ToolbarFrame = ttk.Frame(self)
 
         yScroll = ttk.Scrollbar(self.LoggingFrame, orient=tk.VERTICAL)
-        self.Logging = tk.Text(self.LoggingFrame, height=10, width=0,  
+        self.Logging = tk.Text(self.LoggingFrame, height=10, width=0,
                 bg=cl.BLACK, fg=cl.WHITE, yscrollcommand=yScroll.set)
         yScroll['command'] = self.Logging.yview
         self.Logging.pack(side=tk.BOTTOM,fill=tk.BOTH,expand=True)
@@ -93,6 +85,7 @@ class BJParserFrame(tk.Frame):
         self.__createCanvas()
 
         self.CanvasFrame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.ToolbarFrame.pack(side=tk.TOP, fill=tk.Y, expand=False)
         self.FileListBoxFrame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.ButtonFrame.pack(side=tk.BOTTOM,fill=None)
         self.LoggingFrame.pack(side=tk.BOTTOM, fill=tk.BOTH)
@@ -103,10 +96,7 @@ class BJParserFrame(tk.Frame):
         self.logger.info("Logging...")
         self.handler.flush()
 
-        
-
     def __createButtons(self):
-            
         buttons = [
                 {'name':'Quit','text':'QUIT','command':'Quit','side':tk.BOTTOM},
                 {'name':'Reset','text':'Reset','command':'Reset','side':tk.BOTTOM},
@@ -124,48 +114,55 @@ class BJParserFrame(tk.Frame):
             button.config(text=b['text'],command=getattr(self,b['name']+'Click'))
             button.pack(side=b['side'])
             setattr(self,'Button'+b['name'],button)
-        
+
         self.master.bind('<Left>', self.KeepFileClick)
         self.master.bind('<Right>', self.TossFileClick)
-       
+
     def __createFileListBox(self):
         _h = int(self.winfo_height())
         _w = int(self.winfo_width())
-        
+
         self.FileListBoxFrameLabelVar = tk.StringVar()
         self.FileListBoxFrameLabel = tk.Label(self,
                 textvariable=self.FileListBoxFrameLabelVar,
                 font=font.Font(size=10,weight="bold"))
         self.FileListBoxFrameLabel.pack(side=tk.TOP,fill=tk.X)
-        
+
         scrolls = {}
         styles = {'Keep': (tk.LEFT, cl.LIGHTGREEN),
                   'Toss': (tk.RIGHT, cl.LIGHTRED)}
         for _prefix in ('Keep', 'Toss'):
-            setattr(self, _prefix+'FileListBoxFrame', ttk.Frame(self.FileListBoxFrame, height = _h/3, width = _w/2))   
+            setattr(self, _prefix+'FileListBoxFrame', ttk.Frame(
+                self.FileListBoxFrame, height = _h/3, width = _w/2))
             getattr(self, _prefix+'FileListBoxFrame').pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-            scrolls[_prefix+'yScroll']=ttk.Scrollbar(getattr(self, _prefix+'FileListBoxFrame'), orient=tk.VERTICAL)
+            scrolls[_prefix+'yScroll']=ttk.Scrollbar(
+                getattr(self, _prefix+'FileListBoxFrame'), orient=tk.VERTICAL)
             scrolls[_prefix+'yScroll'].pack(side=styles[_prefix][0], fill=tk.Y)
-            scrolls[_prefix+'xScroll']=ttk.Scrollbar(getattr(self, _prefix+'FileListBoxFrame'), orient=tk.HORIZONTAL)
+            scrolls[_prefix+'xScroll']=ttk.Scrollbar(
+                getattr(self, _prefix+'FileListBoxFrame'), orient=tk.HORIZONTAL)
             scrolls[_prefix+'xScroll'].pack(side=tk.BOTTOM, fill=tk.X)
             setattr(self, _prefix+'filelist', tk.StringVar())
-                      
-            setattr(self, _prefix+'FileListBox', tk.Listbox(getattr(self, _prefix+'FileListBoxFrame'),
-                                                            listvariable=getattr(self, _prefix+'filelist'), 
-                                      selectmode=tk.EXTENDED, 
+
+            setattr(self, _prefix+'FileListBox', tk.Listbox(
+                getattr(self, _prefix+'FileListBoxFrame'),
+                                      listvariable=getattr(self, _prefix+'filelist'),
+                                      selectmode=tk.EXTENDED,
                                       height = 20, width = 45, relief=tk.RAISED, bd=1,
-                                      bg=styles[_prefix][1], 
+                                      bg=styles[_prefix][1],
                                       #font=Font(size=10),
-                                      xscrollcommand=scrolls[_prefix+'xScroll'].set, 
+                                      xscrollcommand=scrolls[_prefix+'xScroll'].set,
                                       yscrollcommand=scrolls[_prefix+'yScroll'].set))
-            
+
             getattr(self, _prefix+'FileListBox').bind('<<ListboxSelect>>', getattr(self, _prefix+'ListBoxClick'))
             scrolls[_prefix+'xScroll']['command'] = getattr(self, _prefix+'FileListBox').xview
             scrolls[_prefix+'yScroll']['command'] = getattr(self, _prefix+'FileListBox').yview
             getattr(self, _prefix+'FileListBox').pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-      
+
     def __createCanvas(self):
+        '''
+        Create placeholder canvas widgets to be replaced with
+        matplotlib TK canvas widgets
+        '''
         _h = int(self.winfo_height())
         _w = int(self.winfo_width())
         self.KeepPlotCanvas = tk.Canvas(self.CanvasFrame, bg='white',
@@ -174,42 +171,43 @@ class BJParserFrame(tk.Frame):
         self.TossPlotCanvas = tk.Canvas(self.CanvasFrame, bg='white',
                                         height = _h/3, width = _w/2)
         self.TossPlotCanvas.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        setattr(self, 'KeepToolbar', ttk.Label(self.ToolbarFrame))
+        setattr(self, 'TossToolbar', ttk.Label(self.ToolbarFrame))
 
-        
+
     def ToFront(self):
         if platform.system() == "Darwin":
-            os.system('''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' ''')
+            os.system('''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' ''')#pylint: disable=line-too-long
         else:
             self.master.attributes('-topmost', 1)
-            self.master.attributes('-topmost', 0)        
+            self.master.attributes('-topmost', 0)
 
     def QuitClick(self):
         self.alive.clear()
         print("Quitting...")
         self.Quit()
 
-    def KeepListBoxClick(self, event):
+    def KeepListBoxClick(self, event): #pylint: disable=unused-argument
         self.__ListBoxClick('Keep')
 
-    def TossListBoxClick(self, event):
+    def TossListBoxClick(self, event): #pylint: disable=unused-argument
         self.__ListBoxClick('Toss')
 
     def __ListBoxClick(self, _prefix):
-        selected = [getattr(self, _prefix+'FileListBox').get(x).replace("_"," ") 
+        
+        selected = [getattr(self, _prefix+'FileListBox').get(x).replace("_"," ")
                 for x in getattr(self, _prefix+'FileListBox').curselection()]
-#        if selected == getattr(self, _prefix+'_selected_files'):
-#            self.logger.debug("%s file selection unchanged.", _prefix)
-#            self.handler.flush()
-#            return
 
-#        setattr(self, _prefix+'_selected_files', selected)
         if len(selected) == 1:
             self.DisplayDataFigure(_prefix, 
-                                   getattr(self, _prefix+'PlotCanvas'), selected[-1])
+                                   self.sidemap[_prefix], selected[-1])
         elif len(selected) > 1:
             self.DisplayDataFigures(_prefix, 
-                                   getattr(self, _prefix+'PlotCanvas'), selected)
+                                   self.sidemap[_prefix], selected)
     
+        getattr(self, _prefix+'FileListBox').focus_set()
+
+        
     def GuessClick(self):
         if not hasattr(self, 'selection_cache'):
             self.logger.error("No files loaded")
@@ -219,10 +217,10 @@ class BJParserFrame(tk.Frame):
             self.logger.error("Wait for parser to complete")
             return
         self.child_threads.append({'thread':threading.Thread(target=self.doGuess),
-                                    'widgets':[self.ButtonGuess,
-                                               self.ButtonParse,
-                                               self.KeepFileListBox, 
-                                               self.TossFileListBox]})
+                                    'widgets':[self.ButtonGuess, #pylint: disable=no-member
+                                               self.ButtonParse, #pylint: disable=no-member
+                                               self.KeepFileListBox, #pylint: disable=no-member
+                                               self.TossFileListBox]}) #pylint: disable=no-member
         self.child_threads[-1]['thread'].name = 'Plateaux Guesser'
         self.child_threads[-1]['thread'].start()
         
@@ -234,7 +232,7 @@ class BJParserFrame(tk.Frame):
             guessQ.put((fn, self.ivs_files[_fn]['d'], self.ivs_files[_fn]['I']))
             
         children = []
-        for i in range(0,8):
+        for _ in range(0,8):
             children.append(CountThread(self.alive, guessQ))
             children[-1].start()
         
@@ -270,9 +268,9 @@ class BJParserFrame(tk.Frame):
             return
         self.checkOptions()
         self.child_threads.append({'thread':threading.Thread(target=self.Parse),
-                                   'widgets':[self.ButtonParse, 
-                                              self.KeepFileListBox, 
-                                              self.TossFileListBox]})
+                                   'widgets':[self.ButtonParse,  #pylint: disable=no-member
+                                              self.KeepFileListBox,  #pylint: disable=no-member
+                                              self.TossFileListBox]}) #pylint: disable=no-member
         self.child_threads[-1]['thread'].name = 'G-histogram parser'
         self.child_threads[-1]['thread'].start()
         #self.Parse()
@@ -323,9 +321,9 @@ class BJParserFrame(tk.Frame):
             self.outdir = os.path.join(self.indir, 'parsed')
         self.checkOptions()
         self.child_threads.append({'thread':threading.Thread(target=self.BackgroundParseFiles),
-                                    'widgets':[self.ButtonGuess,
-                                               self.ButtonReset,
-                                               self.ButtonArchiveTossed]})
+                                    'widgets':[self.ButtonGuess, #pylint: disable=no-member
+                                               self.ButtonReset, #pylint: disable=no-member
+                                               self.ButtonArchiveTossed]}) #pylint: disable=no-member
         self.child_threads[-1]['thread'].name = 'IVS File parser'
         self.child_threads[-1]['thread'].start()
         
@@ -382,17 +380,16 @@ class BJParserFrame(tk.Frame):
         self.__updateFileListBox('Toss')
 
     def __updateFileListBox(self, _prefix):
-            getattr(self, _prefix+'filelist').set(" ".join([x.replace(" ","_") 
-                for x in self.selection_cache[_prefix+'_files']]))
-#            getattr(self, _prefix+'filelist').set(" ".join([x.replace(" ","_") 
-#                for x in self.selection_cache[_prefix+'_files']]))
-            if len(self.selection_cache[_prefix+'_files']) == 0:
-                setattr(self, _prefix+'fig_photo', None)
+        getattr(self, _prefix+'filelist').set(" ".join([x.replace(" ","_") 
+            for x in self.selection_cache[_prefix+'_files']]))
 
-    def KeepFileClick(self, event=None):
+        # if len(self.selection_cache[_prefix+'_files']) == 0:
+        #     setattr(self, _prefix+'fig_photo', None)
+
+    def KeepFileClick(self, event=None): #pylint: disable=unused-argument
         self.__FileClick('Toss', 'Keep')
         
-    def TossFileClick(self, event=None):
+    def TossFileClick(self, event=None): #pylint: disable=unused-argument
         self.__FileClick('Keep', 'Toss')
   
     def __FileClick(self, _from, _to):      
@@ -447,9 +444,7 @@ class BJParserFrame(tk.Frame):
             self.cache['last_input_path'] = os.getcwd()
         if not os.path.exists(self.cache['last_input_path']):
             self.last_input_path = os.path.expanduser('~')
-#        if not self.outdir:
-#            self.outdir = os.path.join(self.indir, 'parsed')
-#            self.logger.debug("Set outdir to %s", self.outdir)
+
         self.handler.flush()
         self.FileListBoxFrameLabelVar.set("Output to: %s"% (self.outdir) )
 
@@ -468,49 +463,50 @@ class BJParserFrame(tk.Frame):
         self.logger.info("Done!")
         self.handler.flush()
         Ghist = GHistogram(self.logger, X)
-        self.DisplayHistogramData('Keep', self.KeepPlotCanvas, Ghist)
+        self.DisplayHistogramData('Keep', self.sidemap['Keep'], Ghist)
         Ghistwriter(self.logger, self.outdir, Ghist)
 
 
-    def DisplayHistogramData(self, label, master, hist):
-        
+    def DisplayHistogramData(self, label, side, hist):
+
         labels={'title':'G Histogram',
-                'X': 'G/G0',
-                'Y': 'Frequency'}
-        plotter = Histplot(hist.fits['bins'], 
-                           hist.fits['freq'],
-                           hist.fits['fit'],
-                           labels)
-
-        plotter.Draw(tk.PhotoImage(master=master,
-                                   width=plotter.figure_w,
-                                   height=plotter.figure_h))
-        getattr(self, label+'PlotCanvas').create_image(plotter.figure_w/2, 
-               plotter.figure_h/2, image=plotter.fig_photo)
-        setattr(self, label+'fig_photo', plotter)
-
+        'X': 'G/G0',
+        'Y': 'Frequency'}
+        getattr(self, label+'PlotCanvas').destroy()
+        getattr(self, label+'Toolbar').destroy()
+        canvas, toolbar = getHistplot(self.CanvasFrame, self.ToolbarFrame,
+                     hist.fits['bins'], 
+                     hist.fits['freq'],
+                    hist.fits['fit'],
+                    labels)
+        toolbar.pack(side=side, expand=False)
+        canvas.get_tk_widget().pack(side=side, fill=tk.BOTH, expand=True)
+  
+        setattr(self, label+'PlotCanvas', canvas)
+        setattr(self, label+'Toolbar', toolbar)
     
-    def DisplayDataFigure(self, label, master, _fn):
-        #https://matplotlib.org/gallery/user_interfaces/embedding_in_tk_canvas_sgskip.html
+    def DisplayDataFigure(self, label, side, _fn):
         fn = os.path.join(self.indir, _fn)
         self.ivs_files.AddFile(fn)
         self.handler.flush()      
         labels={'title':os.path.basename(fn),
                 'X': 'distance',
                 'Y': 'current'}
-        plotter = XYplot(self.ivs_files[fn]['d'],                       
-                         self.ivs_files[fn]['I'],
-                         labels)
-        plotter.Draw(tk.PhotoImage(master=master,
-                                   width=plotter.figure_w,
-                                   height=plotter.figure_h))
-        #plotter.Draw(fig_photo)
-        getattr(self, label+'PlotCanvas').create_image(plotter.figure_w/2, 
-               plotter.figure_h/2, image=plotter.fig_photo)
-        setattr(self, label+'fig_photo', plotter)
 
-    def DisplayDataFigures(self, label, master, fns):
-        #https://matplotlib.org/gallery/user_interfaces/embedding_in_tk_canvas_sgskip.html
+        getattr(self, label+'PlotCanvas').destroy()
+        getattr(self, label+'Toolbar').destroy()
+        canvas, toolbar = getXYplot(self.CanvasFrame, self.ToolbarFrame,
+                        self.ivs_files[fn]['d'],                       
+                        self.ivs_files[fn]['I'],
+                        labels)
+        toolbar.pack(side=side, expand=False)
+        canvas.get_tk_widget().pack(side=side, fill=tk.BOTH, expand=True)
+  
+        setattr(self, label+'PlotCanvas', canvas)
+        setattr(self, label+'Toolbar', toolbar)
+        
+
+    def DisplayDataFigures(self, label, side, fns):
         _title = ''
        
         X, Y, Z = [], [], []
@@ -531,12 +527,12 @@ class BJParserFrame(tk.Frame):
                 'X': 'distance',
                 'Y': 'trace',
                 'Z': 'current'}
-        plotter = XYZplot(X, Y, labels)
-        
-        plotter.Draw(tk.PhotoImage(master=master,
-                                   width=plotter.figure_w,
-                                   height=plotter.figure_h))
-        #plotter.Draw(fig_photo)
-        getattr(self, label+'PlotCanvas').create_image(plotter.figure_w/2, 
-               plotter.figure_h/2, image=plotter.fig_photo)
-        setattr(self, label+'fig_photo', plotter)
+
+        getattr(self, label+'PlotCanvas').destroy()
+        getattr(self, label+'Toolbar').destroy()
+        canvas, toolbar = getXYZplot(self.CanvasFrame, self.ToolbarFrame, X, Y, labels)
+        toolbar.pack(side=side, expand=False)
+        canvas.get_tk_widget().pack(side=side, fill=tk.BOTH, expand=True)
+  
+        setattr(self, label+'PlotCanvas', canvas)
+        setattr(self, label+'Toolbar', toolbar)
