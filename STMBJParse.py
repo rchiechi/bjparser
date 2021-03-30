@@ -7,7 +7,7 @@ Created on Wed Mar 27 13:38:59 2019
 """
 
 import argparse
-from gui.BJParserFrame import BJParserFrame
+import gui
 
 desc='''
 	TBD.
@@ -24,4 +24,7 @@ parser.add_argument('-e', '--extension', default='ivs',
 
 opts=parser.parse_args()
 
-BJParserFrame(opts)
+# BJParserFrame(opts)
+
+root = gui.MainGUI(opts)
+root.mainloop()
